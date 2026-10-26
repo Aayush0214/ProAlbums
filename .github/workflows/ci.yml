@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch cancels the older, still-running check.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # Keep this equal to the version on your laptop (flutter --version),
+          # so "works on my machine" == "works on CI".
+          flutter-version: 3.47.0
+          cache: true
+
+      - run: flutter --version
+      - run: flutter pub get
+
+      # Format check runs BEFORE code generation so generated files are ignored.
+      - run: dart format --output=none --set-exit-if-changed lib test
+
+      # *.g.dart / *.freezed.dart are not committed, CI generates them.
+      - run: dart run build_runner build --delete-conflicting-outputs
+
+      - run: flutter analyze --fatal-infos
+      - run: flutter test --coverage
