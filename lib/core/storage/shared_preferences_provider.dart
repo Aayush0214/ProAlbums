@@ -20,7 +20,6 @@ part 'shared_preferences_provider.g.dart';
 @Riverpod(keepAlive: true)
 SharedPreferences sharedPreferences(Ref ref) {
   throw UnimplementedError(
-    'sharedPreferencesProvider must be overridden in ProviderScope. '
-        'Check bootstrap.dart',
+    'sharedPreferencesProvider must be overridden in ProviderScope.',
   );
 }

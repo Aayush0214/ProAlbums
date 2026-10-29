@@ -1,24 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:proalbums/app/navigation/last_tab_provider.dart';
+import 'package:proalbums/app/navigation/main_tab.dart';
+import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/shared/widgets/glass_container.dart';
 
 /// The frame around the 4 main tabs: Photos, Albums, For You, Search.
 /// go_router gives us [navigationShell] (the currently visible tab).
-class MainShellPage extends StatelessWidget {
+class MainShellPage extends ConsumerWidget {
   const MainShellPage({required this.navigationShell, super.key});
 
   final StatefulNavigationShell navigationShell;
 
-  static const List<_TabItem> _tabs = [
-    _TabItem('Photos', LucideIcons.image),
-    _TabItem('Albums', LucideIcons.folder),
-    _TabItem('For You', LucideIcons.sparkles),
-    _TabItem('Search', LucideIcons.search),
-  ];
-
-  void _onTabSelected(int index) {
-    // Tapping the tab you are already on goes back to that tab's first page.
+  void _onTabSelected(WidgetRef ref, int index) {
+    ref.read(lastTabProvider.notifier).select(MainTab.values[index]);
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
@@ -26,7 +23,11 @@ class MainShellPage extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    assert(
+      navigationShell.route.branches.length == MainTab.values.length,
+      'Router branches and MainTab must be in the same order.',
+    );
     return Scaffold(
       // Content scrolls BEHIND the glass nav bar. The body's
       // MediaQuery.padding.bottom automatically includes the bar height, so
@@ -36,10 +37,14 @@ class MainShellPage extends StatelessWidget {
       bottomNavigationBar: GlassContainer(
         child: NavigationBar(
           selectedIndex: navigationShell.currentIndex,
-          onDestinationSelected: _onTabSelected,
+          onDestinationSelected: (index) => _onTabSelected(ref, index),
           destinations: [
-            for (final tab in _tabs)
-              NavigationDestination(icon: Icon(tab.icon), label: tab.label),
+            for (final tab in MainTab.values)
+              NavigationDestination(
+                label: tab.label,
+                icon: Icon(tab.icon),
+                selectedIcon: Icon(tab.icon, color: context.colors.activeAccent),
+              ),
           ],
         ),
       ),
@@ -47,8 +52,18 @@ class MainShellPage extends StatelessWidget {
   }
 }
 
-class _TabItem {
-  const _TabItem(this.label, this.icon);
-  final String label;
-  final IconData icon;
+extension on MainTab {
+  String get label => switch (this) {
+    MainTab.photos => 'Photos',
+    MainTab.albums => 'Albums',
+    MainTab.forYou => 'For You',
+    MainTab.search => 'Search',
+  };
+
+  IconData get icon => switch (this) {
+    MainTab.photos => LucideIcons.image,
+    MainTab.albums => LucideIcons.folder,
+    MainTab.forYou => LucideIcons.sparkles,
+    MainTab.search => LucideIcons.search,
+  };
 }

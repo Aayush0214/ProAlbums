@@ -33,19 +33,7 @@ sealed class Failure {
 
 /// Gallery permission denied / limited / permanently denied.
 final class PermissionFailure extends Failure {
-  final bool isPermanentlyDenied;
-
-  const PermissionFailure([
-    super.message = 'Media permission was denied. Please grant access in Settings.',
-    this.isPermanentlyDenied = false,
-  ]) : super();
-
-  const PermissionFailure.withDetails(
-      super.message, {
-        this.isPermanentlyDenied = false,
-        super.cause,
-        super.stackTrace,
-      });
+  const PermissionFailure(super.message, {super.cause, super.stackTrace});
 }
 
 /// Reading or modifying media (photo_manager / MediaStore) failed.
