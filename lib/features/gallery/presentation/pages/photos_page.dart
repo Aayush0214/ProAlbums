@@ -1,51 +1,77 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:proalbums/core/error/failures.dart';
-import 'package:proalbums/core/theme/app_colors.dart';
-import 'package:proalbums/features/gallery/presentation/providers/phase1_check_providers.dart';
-import 'package:proalbums/features/gallery/presentation/widgets/media_thumbnail.dart';
+import 'package:proalbums/features/gallery/presentation/pages/photos_body.dart';
+import 'package:proalbums/features/gallery/presentation/providers/gallery_rows_provider.dart';
+import 'package:proalbums/features/gallery/presentation/providers/limited_access_banner_provider.dart';
+import 'package:proalbums/features/gallery/presentation/providers/photos_controller.dart';
+import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
+import 'package:proalbums/features/gallery/presentation/widgets/limited_access_banner.dart';
+import 'package:proalbums/features/gallery/presentation/widgets/photos_app_bar.dart';
+import 'package:proalbums/features/gallery/presentation/widgets/selection_action_bar.dart';
+import 'package:proalbums/features/permissions/presentation/providers/media_permission_notifier.dart';
+import 'package:proalbums/shared/shell/shell_bottom_bar_provider.dart';
 
-/// TEMPORARY verification screen (Phase 2 replaces it with the real grid).
+/// The Photos tab: app bar + the grid (+ the action bar while selecting).
 class PhotosPage extends ConsumerWidget {
   const PhotosPage({super.key});
 
+  static const String _owner = 'photos-selection';
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(mediaCountProvider);
-    final firstPage = ref.watch(firstMediaPageProvider);
+    final immersive = ref.watch(photosImmersiveActiveProvider);
+    final selecting = ref.watch(
+      photosSelectionControllerProvider.select((s) => s.active),
+    );
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Photos')),
-      body: firstPage.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(
-          child: Text(error is Failure ? error.message : 'Something went wrong'),
-        ),
-        data: (page) => CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Text(
-                  '${count.value ?? '...'} items on this device '
-                      '(showing first ${page.items.length})',
-                  style: context.textTheme.bodySmall,
-                ),
+    // The user changed the photo access (Select more / Allow all in system
+    // Settings): the library is different now, so load it again.
+    ref.listen(mediaPermissionProvider, (previous, next) {
+      final before = previous?.value;
+      final after = next.value;
+      if (before != null && after != null && before != after) {
+        ref.invalidate(photosControllerProvider);
+      }
+    });
+
+    final showBanner = ref.watch(showLimitedAccessBannerProvider);
+
+    // While selecting, the action bar takes the place of the navigation bar.
+    ref.listen(
+      photosSelectionControllerProvider.select((s) => s.active),
+      (previous, active) {
+        final bar = ref.read(shellBottomBarHiddenProvider.notifier);
+        if (active) {
+          bar.hide(_owner);
+        } else {
+          bar.show(_owner);
+        }
+      },
+    );
+
+    // Back while selecting = leave selection mode (not the app).
+    return PopScope(
+      canPop: !selecting,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) ref.read(photosSelectionControllerProvider.notifier).exit();
+      },
+      child: Scaffold(
+        // Immersive view: the photos run BEHIND the (transparent) app bar and
+        // the status bar. The bottom navigation bar stays visible.
+        extendBodyBehindAppBar: immersive,
+        appBar: const PhotosAppBar(),
+        bottomNavigationBar: selecting ? const SelectionActionBar() : null,
+        body: Column(
+          children: [
+            // Not in immersive view (only photos) and not while selecting.
+            if (showBanner && !immersive && !selecting)
+              const LimitedAccessBanner(),
+            Expanded(
+              child: PhotosBody(
+                // Status bar + app bar. Measured HERE, above the Scaffold, so
+                // it is exact whether the body goes behind the app bar or not.
+                appBarExtent: MediaQuery.paddingOf(context).top + kToolbarHeight,
               ),
-            ),
-            SliverGrid.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                mainAxisSpacing: 2,
-                crossAxisSpacing: 2,
-              ),
-              itemCount: page.items.length,
-              itemBuilder: (context, index) =>
-                  MediaThumbnail(item: page.items[index]),
-            ),
-            // Keeps the last row above the glass bottom bar.
-            SliverToBoxAdapter(
-              child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
             ),
           ],
         ),

@@ -1,14 +1,47 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:io' show Platform;
 
 import 'package:flutter/services.dart';
 import 'package:photo_manager/photo_manager.dart';
+import 'package:proalbums/core/logging/app_logger.dart';
+import 'package:proalbums/core/utils/lifo_job_queue.dart';
 import 'package:proalbums/features/gallery/data/datasources/media_local_data_source.dart';
+import 'package:proalbums/features/gallery/data/datasources/system_thumbnail_source.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_page_request.dart';
 
 /// photo_manager implementation (MediaStore on Android, PhotoKit on iOS).
 final class PhotoManagerMediaDataSource implements MediaLocalDataSource {
+  /// [systemThumbnails] defaults to the Android system thumbnails. Start the
+  /// app with `--dart-define=SYSTEM_THUMBS=false` to compare with the old way.
+  PhotoManagerMediaDataSource({SystemThumbnailSource? systemThumbnails})
+      : _systemThumbnails = systemThumbnails ??
+            (_useSystemThumbnails && Platform.isAndroid
+                ? const MethodChannelSystemThumbnailSource()
+                : null);
+
+  static const bool _useSystemThumbnails =
+      bool.fromEnvironment('SYSTEM_THUMBS', defaultValue: true);
+
+  final SystemThumbnailSource? _systemThumbnails;
+
+  // System thumbnails are cheap (a few ms), so more can run together than the
+  // photo_manager way. The Android side has 4 worker threads.
+  static const int _maxParallelSystemThumbnails = 4;
+  final LifoJobQueue _systemQueue =
+      LifoJobQueue(maxConcurrent: _maxParallelSystemThumbnails);
+
+  // Debug aid for the "is it really faster?" comparison.
+  int _systemCount = 0;
+  int _systemMs = 0;
+  int _fallbackCount = 0;
+  int _fallbackMs = 0;
+
   static const int _maxCachedAssets = 3000;
+
+  // Android reads and decodes a whole photo for each thumbnail. More than a few
+  // at the same time only makes the phone (and the UI) slower, see LifoJobQueue.
+  static const int _maxParallelThumbnails = 3;
 
   // By default photo_manager hides items whose width/height or duration is
   // missing in MediaStore (e.g. a screenshot not fully indexed yet), so the
@@ -20,6 +53,9 @@ final class PhotoManagerMediaDataSource implements MediaLocalDataSource {
     sizeConstraint: SizeConstraint(ignoreSize: true),
     durationConstraint: DurationConstraint(allowNullable: true),
   );
+
+  final LifoJobQueue _thumbnailQueue =
+      LifoJobQueue(maxConcurrent: _maxParallelThumbnails);
 
   // Thumbnails need the plugin's AssetEntity, but the rest of the app only
   // knows ids. We remember recently loaded AssetEntity objects here, so a
@@ -63,12 +99,64 @@ final class PhotoManagerMediaDataSource implements MediaLocalDataSource {
 
   @override
   Future<Uint8List?> getThumbnail({required String id, required int size}) async {
-    final asset = _assetCache[id] ?? await AssetEntity.fromId(id);
-    if (asset == null) return null;
-    return asset.thumbnailDataWithSize(
-      ThumbnailSize.square(size),
-      quality: 80,
+    final system = _systemThumbnails;
+    final known = _assetCache[id];
+    if (system != null && known != null) {
+      final bytes = await _systemQueue.run(() async {
+        final stopwatch = Stopwatch()..start();
+        final data = await system.load(
+          id: id,
+          size: size,
+          isVideo: known.type == AssetType.video,
+        );
+        if (data != null) {
+          _systemCount++;
+          _systemMs += stopwatch.elapsedMilliseconds;
+          _logStats();
+        }
+        return data;
+      });
+      if (bytes != null) return bytes;
+    }
+    return _photoManagerThumbnail(id, size);
+  }
+
+  void _logStats() {
+    final total = _systemCount + _fallbackCount;
+    if (total == 0 || total % 100 != 0) return;
+    String avg(int ms, int count) =>
+        count == 0 ? '-' : (ms / count).toStringAsFixed(1);
+    AppLogger.d(
+      '[thumb] stats: system $_systemCount x ${avg(_systemMs, _systemCount)} ms, '
+      'photo_manager $_fallbackCount x ${avg(_fallbackMs, _fallbackCount)} ms',
     );
+  }
+
+  Future<Uint8List?> _photoManagerThumbnail(String id, int size) {
+    return _thumbnailQueue.run(() async {
+      final stopwatch = Stopwatch()..start();
+
+      final asset = _assetCache[id] ?? await AssetEntity.fromId(id);
+      if (asset == null) return null;
+
+      final bytes = await asset.thumbnailDataWithSize(
+        ThumbnailSize.square(size),
+        quality: 80,
+      );
+
+      _fallbackCount++;
+      _fallbackMs += stopwatch.elapsedMilliseconds;
+      _logStats();
+
+      // Debug aid: shows how long the phone needs for ONE thumbnail.
+      if (stopwatch.elapsedMilliseconds > 300) {
+        AppLogger.d(
+          '[thumb] slow: ${stopwatch.elapsedMilliseconds} ms '
+          '(${_thumbnailQueue.pendingCount} waiting)',
+        );
+      }
+      return bytes;
+    });
   }
 
   Future<void> dispose() => _changes.close();

@@ -9,14 +9,22 @@ import 'package:proalbums/features/gallery/presentation/images/media_thumbnail_i
 import 'package:proalbums/features/gallery/presentation/providers/media_providers.dart';
 
 /// One square tile: cached thumbnail + (for videos) a duration badge.
-/// Phase 2's grid reuses this widget as it is.
 class MediaThumbnail extends ConsumerWidget {
-  const MediaThumbnail({required this.item, this.size = 256, super.key});
+  const MediaThumbnail({
+    required this.item,
+    this.size = 256,
+    this.compactBadge = false,
+    super.key,
+  });
 
   final MediaItem item;
 
-  /// Square side in pixels. Phase 2 picks it from the grid cell size.
+  /// Square side in pixels. The grid picks it from the cell size.
   final int size;
+
+  /// Tiny tiles (overview zoom) show only a camera icon instead of the
+  /// duration, because the text would not fit.
+  final bool compactBadge;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,25 +49,16 @@ class MediaThumbnail extends ConsumerWidget {
             fit: BoxFit.cover,
             gaplessPlayback: true,
             filterQuality: FilterQuality.low,
-            // Fade in only when the image was NOT already in the cache, so
-            // cached tiles appear instantly and new ones appear smoothly.
-            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-              if (wasSynchronouslyLoaded) return child;
-              return AnimatedOpacity(
-                opacity: frame == null ? 0 : 1,
-                duration: const Duration(milliseconds: 150),
-                curve: Curves.easeOut,
-                child: child,
-              );
-            },
+            // No fade-in: measured, it cost ~9 points of slow frames while
+            // scrolling (every fading tile needs its own transparency layer).
             errorBuilder: (context, error, stackTrace) =>
                 const SizedBox.shrink(),
           ),
           if (item.isVideo)
             Positioned(
-              left: 6,
-              bottom: 6,
-              child: _VideoBadge(duration: item.duration),
+              left: compactBadge ? 3 : 6,
+              bottom: compactBadge ? 3 : 6,
+              child: _VideoBadge(duration: item.duration, compact: compactBadge),
             ),
         ],
       ),
@@ -67,37 +66,45 @@ class MediaThumbnail extends ConsumerWidget {
   }
 }
 
-/// Stitch style pill: play icon + duration. Delete the Icon and SizedBox
-/// below if you want the duration alone.
+/// Stitch style pill: play icon + duration (or just a camera icon when tiny).
 class _VideoBadge extends StatelessWidget {
-  const _VideoBadge({required this.duration});
+  const _VideoBadge({required this.duration, required this.compact});
 
   final Duration duration;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: AppColors.mediaBadgeFill,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(compact ? 4 : 8),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.play_arrow_rounded,
-              size: 12,
-              color: AppColors.mediaBadgeText,
-            ),
-            const SizedBox(width: 2),
-            Text(
-              formatVideoDuration(duration),
-              style: AppTypography.badgeTimestamp(),
-            ),
-          ],
-        ),
+        padding: compact
+            ? const EdgeInsets.all(2)
+            : const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: compact
+            ? const Icon(
+                Icons.videocam_rounded,
+                size: 11,
+                color: AppColors.mediaBadgeText,
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.play_arrow_rounded,
+                    size: 12,
+                    color: AppColors.mediaBadgeText,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    formatVideoDuration(duration),
+                    style: AppTypography.badgeTimestamp(),
+                  ),
+                ],
+              ),
       ),
     );
   }

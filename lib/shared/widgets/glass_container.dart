@@ -1,35 +1,26 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 
-/// Frosted-glass wrapper (Stitch: "backdrop-blur" nav and top bars).
+/// "Glass" look for the bottom bar: a nearly opaque surface and a hairline
+/// border.
 ///
-/// It only does the BLUR and a hairline border. The translucent color comes
-/// from the child (for example NavigationBar's theme background), so we never
-/// tint twice.
+/// It used to blur what is behind it (BackdropFilter). Measured on the real
+/// phone, that blur doubled the number of slow frames while scrolling, because
+/// the GPU has to re-blur the photos moving behind the bar on every frame.
+/// A nearly opaque surface looks almost the same and costs nothing.
 class GlassContainer extends StatelessWidget {
-  const GlassContainer({
-    required this.child,
-    this.blurSigma = 24,
-    super.key,
-  });
+  const GlassContainer({required this.child, super.key});
 
   final Widget child;
-  final double blurSigma;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: context.colors.glassBorder, width: 1)),
-          ),
-          child: child,
-        ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.94),
+        border: Border(top: BorderSide(color: context.colors.glassBorder, width: 1)),
       ),
+      child: child,
     );
   }
 }
