@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Typography System extracted from DESIGN_1.md (Plus Jakarta Sans)
 /// and DESIGN_2.md (Inter & JetBrains Mono)
 ///
-/// FONT BUNDLING (do this at release time, NO code change needed):
-/// 1. Download the .ttf files of Plus Jakarta Sans, Inter, JetBrains Mono.
-/// 2. Put them in `assets/google_fonts/` and list that folder under
-///    `flutter: assets:` in pubspec.yaml.
-/// 3. The google_fonts package automatically prefers a bundled file whose
-///    name matches (e.g. `Inter-Regular.ttf`) over a network download.
-/// Optionally set `GoogleFonts.config.allowRuntimeFetching = false;` in main()
-/// afterwards so the app never touches the network for fonts.
+/// The fonts are BUNDLED in the app (assets/fonts, declared in pubspec.yaml),
+/// so they load at once, also offline, and the app never downloads a font.
+/// Only the weights used below are bundled; a weight that is not bundled
+/// falls back to the nearest one. To use a new weight, add its .ttf file and
+/// its `weight:` line in pubspec.yaml.
 abstract final class AppTypography {
+  // Family names = the `family:` entries in pubspec.yaml.
+  static const String _jakarta = 'PlusJakartaSans';
+  static const String _inter = 'Inter';
+  static const String _mono = 'JetBrainsMono';
+
   /// Builds the full Material 3 TextTheme for Light & Dark modes
   static TextTheme buildTextTheme({
     required Color primaryTextColor,
@@ -23,7 +24,8 @@ abstract final class AppTypography {
       // DISPLAY & HEADLINES (Plus Jakarta Sans - DESIGN_1.md)
       // =======================================================================
       // display: 40px, weight 700, lineHeight 48px (1.2), letterSpacing -0.03em
-      displayLarge: GoogleFonts.plusJakartaSans(
+      displayLarge: TextStyle(
+        fontFamily: _jakarta,
         fontSize: 40,
         fontWeight: FontWeight.w700,
         height: 48 / 40,
@@ -31,7 +33,8 @@ abstract final class AppTypography {
         color: primaryTextColor,
       ),
       // headline-xl: 34px, weight 700, lineHeight 40px (DESIGN_2.md)
-      displayMedium: GoogleFonts.plusJakartaSans(
+      displayMedium: TextStyle(
+        fontFamily: _jakarta,
         fontSize: 34,
         fontWeight: FontWeight.w700,
         height: 40 / 34,
@@ -39,7 +42,8 @@ abstract final class AppTypography {
         color: primaryTextColor,
       ),
       // display-mobile: 32px, weight 700, lineHeight 38px, letterSpacing -0.025em
-      displaySmall: GoogleFonts.plusJakartaSans(
+      displaySmall: TextStyle(
+        fontFamily: _jakarta,
         fontSize: 32,
         fontWeight: FontWeight.w700,
         height: 38 / 32,
@@ -49,7 +53,8 @@ abstract final class AppTypography {
 
       // headline-lg / headline-xl-mobile: 28px, weight 700, lineHeight 34px
       // (also used as the AppBar title, see AppTheme)
-      headlineLarge: GoogleFonts.plusJakartaSans(
+      headlineLarge: TextStyle(
+        fontFamily: _jakarta,
         fontSize: 28,
         fontWeight: FontWeight.w700,
         height: 34 / 28,
@@ -57,7 +62,8 @@ abstract final class AppTypography {
         color: primaryTextColor,
       ),
       // headline-md: 22px, weight 600, lineHeight 28px
-      headlineMedium: GoogleFonts.plusJakartaSans(
+      headlineMedium: TextStyle(
+        fontFamily: _jakarta,
         fontSize: 22,
         fontWeight: FontWeight.w600,
         height: 28 / 22,
@@ -65,7 +71,8 @@ abstract final class AppTypography {
         color: primaryTextColor,
       ),
       // headline-sm: 18px, weight 600, lineHeight 24px
-      headlineSmall: GoogleFonts.plusJakartaSans(
+      headlineSmall: TextStyle(
+        fontFamily: _jakarta,
         fontSize: 18,
         fontWeight: FontWeight.w600,
         height: 24 / 18,
@@ -76,21 +83,24 @@ abstract final class AppTypography {
       // =======================================================================
       // TITLES & BODY (Inter - DESIGN_2.md & DESIGN_1.md)
       // =======================================================================
-      titleLarge: GoogleFonts.plusJakartaSans(
+      titleLarge: TextStyle(
+        fontFamily: _jakarta,
         fontSize: 20,
         fontWeight: FontWeight.w600,
         height: 26 / 20,
         letterSpacing: -0.2,
         color: primaryTextColor,
       ),
-      titleMedium: GoogleFonts.inter(
+      titleMedium: TextStyle(
+        fontFamily: _inter,
         fontSize: 16,
         fontWeight: FontWeight.w600,
         height: 22 / 16,
         letterSpacing: -0.1,
         color: primaryTextColor,
       ),
-      titleSmall: GoogleFonts.inter(
+      titleSmall: TextStyle(
+        fontFamily: _inter,
         fontSize: 14,
         fontWeight: FontWeight.w600,
         height: 20 / 14,
@@ -98,7 +108,8 @@ abstract final class AppTypography {
       ),
 
       // body-lg: 16px, weight 400, lineHeight 24px
-      bodyLarge: GoogleFonts.inter(
+      bodyLarge: TextStyle(
+        fontFamily: _inter,
         fontSize: 16,
         fontWeight: FontWeight.w400,
         height: 24 / 16,
@@ -106,14 +117,16 @@ abstract final class AppTypography {
         color: primaryTextColor,
       ),
       // body-md: 14px, weight 400, lineHeight 20px
-      bodyMedium: GoogleFonts.inter(
+      bodyMedium: TextStyle(
+        fontFamily: _inter,
         fontSize: 14,
         fontWeight: FontWeight.w400,
         height: 20 / 14,
         color: primaryTextColor,
       ),
       // body-sm: 12px, weight 400, lineHeight 16px (Subtitles & Item Counts)
-      bodySmall: GoogleFonts.inter(
+      bodySmall: TextStyle(
+        fontFamily: _inter,
         fontSize: 12,
         fontWeight: FontWeight.w400,
         height: 16 / 12,
@@ -125,7 +138,8 @@ abstract final class AppTypography {
       // LABELS & BUTTONS (Plus Jakarta Sans / Inter)
       // =======================================================================
       // label-lg: 14px, weight 600, lineHeight 18px
-      labelLarge: GoogleFonts.plusJakartaSans(
+      labelLarge: TextStyle(
+        fontFamily: _jakarta,
         fontSize: 14,
         fontWeight: FontWeight.w600,
         height: 18 / 14,
@@ -133,7 +147,8 @@ abstract final class AppTypography {
         color: primaryTextColor,
       ),
       // label-md: 12px, weight 600, lineHeight 16px
-      labelMedium: GoogleFonts.inter(
+      labelMedium: TextStyle(
+        fontFamily: _inter,
         fontSize: 12,
         fontWeight: FontWeight.w600,
         height: 16 / 12,
@@ -141,7 +156,8 @@ abstract final class AppTypography {
         color: primaryTextColor,
       ),
       // label-sm: 11px, weight 500, lineHeight 14px
-      labelSmall: GoogleFonts.inter(
+      labelSmall: TextStyle(
+        fontFamily: _inter,
         fontSize: 11,
         fontWeight: FontWeight.w500,
         height: 14 / 11,
@@ -158,7 +174,8 @@ abstract final class AppTypography {
   /// Used for EXIF camera readouts (ISO, Shutter Speed, 3840x2160, File Size)
   /// Spec: label-mono -> 11px, weight 500, lineHeight 14px + tabular figures
   static TextStyle labelMono({Color? color}) {
-    return GoogleFonts.jetBrainsMono(
+    return TextStyle(
+      fontFamily: _mono,
       fontSize: 11,
       fontWeight: FontWeight.w500,
       height: 14 / 11,
@@ -170,7 +187,8 @@ abstract final class AppTypography {
   /// Used for Video Thumbnail Duration Badges ("00:39", "01:03", "4K", "RAW")
   /// Spec: badge-timestamp -> 10px, weight 500, lineHeight 12px + tabular figures
   static TextStyle badgeTimestamp({Color color = Colors.white}) {
-    return GoogleFonts.jetBrainsMono(
+    return TextStyle(
+      fontFamily: _mono,
       fontSize: 10,
       fontWeight: FontWeight.w500,
       height: 12 / 10,
