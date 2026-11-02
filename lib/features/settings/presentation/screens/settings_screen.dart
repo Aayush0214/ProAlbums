@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/core/widgets/theme_selector_card.dart';
+import 'package:proalbums/features/trash/presentation/widgets/recently_deleted_setting_tile.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -64,12 +65,7 @@ class SettingsScreen extends ConsumerWidget {
                     onChanged: (_) {},
                   ),
                   const Divider(height: 1),
-                  SwitchListTile(
-                    title: const Text('Recently deleted'),
-                    subtitle: const Text('Deleted images and videos will be displayed in "Recently deleted".'),
-                    value: true,
-                    onChanged: (_) {},
-                  ),
+                  const RecentlyDeletedSettingTile(),
                   const Divider(height: 1),
                   ListTile(
                     title: const Text('Save method after editing'),

@@ -13,6 +13,8 @@ import 'package:proalbums/features/gallery/presentation/providers/photos_selecti
 import 'package:proalbums/features/gallery/presentation/providers/photos_view_settings_controller.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/browsing_order_sheet.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selection_checkbox.dart';
+import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
+import 'package:proalbums/shared/widgets/title_collapse_provider.dart';
 
 enum _PhotosMenuAction {
   zoomIn,
@@ -41,6 +43,7 @@ class PhotosAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final settings = ref.watch(photosViewSettingsControllerProvider);
     final controller = ref.read(photosViewSettingsControllerProvider.notifier);
     final immersive = ref.watch(photosImmersiveActiveProvider);
+    final titleProgress = ref.watch(photosTitleProgressProvider);
 
     // Over photos the bar must be white, whatever the theme is.
     final foreground = immersive ? Colors.white : null;
@@ -52,9 +55,11 @@ class PhotosAppBar extends ConsumerWidget implements PreferredSizeWidget {
 
     return AppBar(
       title: const Text('Photos'),
-      titleTextStyle: immersive
-          ? context.textTheme.headlineLarge?.copyWith(color: Colors.white)
-          : null,
+      // Big at the top of the list, smaller once scrolled (the bar's height
+      // never changes, so the grid geometry stays exact).
+      titleTextStyle: collapsingTitleStyle(context, titleProgress).copyWith(
+        color: immersive ? Colors.white : null,
+      ),
       systemOverlayStyle: immersive
           ? SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent)
           : null,

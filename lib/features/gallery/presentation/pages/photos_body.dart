@@ -230,20 +230,6 @@ class _PhotosBodyState extends ConsumerState<PhotosBody> {
                 ),
               ),
               ),
-              Positioned.fill(
-                child: FastScrollThumb(
-                  controller: _scrollController,
-                  geometry: geometry,
-                  viewportHeight: constraints.maxHeight,
-                  reversed: reversed,
-                  topInset: immersive ? widget.appBarExtent + 8 : 8,
-                  bottomInset: bottomPadding + 8,
-                  labelAt: (displayOffset) {
-                    final date = geometry.dateAt(displayOffset);
-                    return date == null ? null : formatMonthLabel(date);
-                  },
-                ),
-              ),
               if (immersive)
                 Positioned(
                   top: widget.appBarExtent + 4,
@@ -273,6 +259,22 @@ class _PhotosBodyState extends ConsumerState<PhotosBody> {
                     ),
                   ),
                 ),
+              // LAST = on top of the date header, so the handle is never half
+              // hidden when the header is pushed by the next one.
+              Positioned.fill(
+                child: FastScrollThumb(
+                  controller: _scrollController,
+                  geometry: geometry,
+                  viewportHeight: constraints.maxHeight,
+                  reversed: reversed,
+                  topInset: immersive ? widget.appBarExtent + 8 : 8,
+                  bottomInset: bottomPadding + 8,
+                  labelAt: (displayOffset) {
+                    final date = geometry.dateAt(displayOffset);
+                    return date == null ? null : formatMonthLabel(date);
+                  },
+                ),
+              ),
             ],
           ),
         );

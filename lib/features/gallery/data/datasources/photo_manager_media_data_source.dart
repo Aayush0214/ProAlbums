@@ -86,7 +86,7 @@ final class PhotoManagerMediaDataSource implements MediaLocalDataSource {
     if (path == null) return const <AssetEntity>[];
 
     final assets = await path.getAssetListPaged(page: page, size: size);
-    _remember(assets);
+    remember(assets);
     return assets;
   }
 
@@ -193,7 +193,9 @@ final class PhotoManagerMediaDataSource implements MediaLocalDataSource {
         MediaKind.videos => RequestType.video,
       };
 
-  void _remember(List<AssetEntity> assets) {
+  /// Other loaders (the albums) hand their assets here too, so thumbnails of
+  /// every grid use the fast system thumbnails.
+  void remember(List<AssetEntity> assets) {
     for (final asset in assets) {
       _assetCache[asset.id] = asset;
     }

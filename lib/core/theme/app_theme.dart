@@ -253,12 +253,13 @@ abstract final class AppTheme {
 
       // ---- Dialogs (confirm delete, empty trash) --------------------------
       dialogTheme: DialogThemeData(
+        elevation: 0,
         backgroundColor: sheetColor,
         surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         titleTextStyle: textTheme.headlineSmall,
         contentTextStyle: textTheme.bodyMedium,
+        constraints: const BoxConstraints(maxWidth: 400),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
 
       // ---- Overflow "⋮" menu (Zoom in, Browsing order, Settings...) -------

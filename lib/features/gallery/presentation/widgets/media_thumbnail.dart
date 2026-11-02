@@ -14,6 +14,7 @@ class MediaThumbnail extends ConsumerWidget {
     required this.item,
     this.size = 256,
     this.compactBadge = false,
+    this.badgeInset = 0,
     super.key,
   });
 
@@ -25,6 +26,10 @@ class MediaThumbnail extends ConsumerWidget {
   /// Tiny tiles (overview zoom) show only a camera icon instead of the
   /// duration, because the text would not fit.
   final bool compactBadge;
+
+  /// Pushes the video badge to the right, to make room for the favourite
+  /// heart that sits in the same corner (like the system gallery).
+  final double badgeInset;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -56,7 +61,7 @@ class MediaThumbnail extends ConsumerWidget {
           ),
           if (item.isVideo)
             Positioned(
-              left: compactBadge ? 3 : 6,
+              left: (compactBadge ? 3 : 6) + badgeInset,
               bottom: compactBadge ? 3 : 6,
               child: _VideoBadge(duration: item.duration, compact: compactBadge),
             ),

@@ -14,11 +14,15 @@ part 'media_providers.g.dart';
 // Dependency wiring for the gallery feature (same idea as permission_providers).
 
 @Riverpod(keepAlive: true)
-MediaLocalDataSource mediaLocalDataSource(Ref ref) {
+PhotoManagerMediaDataSource photoManagerMediaDataSource(Ref ref) {
   final dataSource = PhotoManagerMediaDataSource();
   ref.onDispose(dataSource.dispose);
   return dataSource;
 }
+
+@Riverpod(keepAlive: true)
+MediaLocalDataSource mediaLocalDataSource(Ref ref) =>
+    ref.watch(photoManagerMediaDataSourceProvider);
 
 @Riverpod(keepAlive: true)
 MediaRepository mediaRepository(Ref ref) =>

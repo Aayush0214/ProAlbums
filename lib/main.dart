@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:proalbums/app/app.dart';
 import 'package:proalbums/core/debug/frame_monitor.dart';
 import 'package:proalbums/core/logging/app_logger.dart';
+import 'package:proalbums/core/platform/app_orientation.dart';
 import 'package:proalbums/core/storage/shared_preferences_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,6 +25,7 @@ Future<void> main() async {
   };
 
   WidgetsFlutterBinding.ensureInitialized();
+  await AppOrientation.lockPortrait();
   FrameMonitor.start();
   AppLogger.d('boot: binding ready');
 
