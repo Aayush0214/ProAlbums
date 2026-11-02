@@ -11,6 +11,7 @@ import 'package:proalbums/features/trash/presentation/providers/trash_providers.
 import 'package:proalbums/features/trash/presentation/widgets/trashed_tile.dart';
 import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
+import 'package:proalbums/shared/widgets/confirm_dialog.dart';
 
 /// "Recently deleted": what Android keeps in its trash for 30 days. Select
 /// items, then Restore (back in their albums) or Delete for good.
@@ -70,31 +71,14 @@ class _RecentlyDeletedPageState extends ConsumerState<RecentlyDeletedPage> {
   }
 
   Future<void> _deleteForever(List<TrashedItem> chosen) async {
-    final yes = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          chosen.length == 1
-              ? 'Delete permanently?'
-              : 'Delete ${chosen.length} items permanently?',
-        ),
-        content: const Text(
+    final yes = await showConfirmDialog(
+      context,
+      title: chosen.length == 1
+          ? 'Delete permanently?'
+          : 'Delete ${chosen.length} items permanently?',
+      message:
           'This cannot be undone. The files will be removed from your phone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: context.colorScheme.error,
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete',
     );
     if (yes != true || !mounted) return;
 

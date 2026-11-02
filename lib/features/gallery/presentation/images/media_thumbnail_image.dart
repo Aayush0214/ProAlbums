@@ -43,7 +43,8 @@ class MediaThumbnailImage extends ImageProvider<MediaThumbnailImage> {
     return MultiFrameImageStreamCompleter(
       codec: _loadCodec(key, decode),
       scale: 1,
-      debugLabel: 'MediaThumbnailImage(${key.id}, ${key.size})',
+      // No debugLabel: building this string for every thumbnail showed up in
+      // the profile (ImageProvider.toString), and only debug tools read it.
     );
   }
 

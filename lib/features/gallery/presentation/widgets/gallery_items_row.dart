@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_geometry.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selectable_tile.dart';
@@ -11,6 +12,7 @@ class GalleryItemsRow extends StatelessWidget {
     required this.cellSize,
     required this.thumbnailSize,
     this.compactBadge = false,
+    this.viewerItems,
     super.key,
   });
 
@@ -18,6 +20,10 @@ class GalleryItemsRow extends StatelessWidget {
   final double cellSize;
   final int thumbnailSize;
   final bool compactBadge;
+
+  /// The list the viewer swipes through when a tile is tapped. null = the
+  /// Photos tab list; an album (or search...) passes its own.
+  final ProviderListenable<List<MediaItem>>? viewerItems;
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +41,7 @@ class GalleryItemsRow extends StatelessWidget {
                 item: items[i],
                 thumbnailSize: thumbnailSize,
                 compact: compactBadge,
+                items: viewerItems,
               ),
             ),
           ],

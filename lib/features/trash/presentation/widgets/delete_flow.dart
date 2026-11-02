@@ -146,25 +146,14 @@ Future<void> _askForAccessOnce(
   }
   if (!context.mounted) return;
 
-  final allow = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Delete without extra pop-ups?'),
-      content: const Text(
-        'Turn on "Media management" for ProAlbums on the next screen. Then '
-        'deleting only asks once (in the app), not again in Android.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Not now'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Open settings'),
-        ),
-      ],
-    ),
+  final allow = await showConfirmDialog(
+    context,
+    title: 'Delete without extra pop-ups?',
+    message: 'Turn on "Media management" for ProAlbums on the next screen. '
+        'Then deleting only asks once (in the app), not again in Android.',
+    confirmLabel: 'Open settings',
+    cancelLabel: 'Not now',
+    destructive: false,
   );
   if (allow ?? false) await request();
 }

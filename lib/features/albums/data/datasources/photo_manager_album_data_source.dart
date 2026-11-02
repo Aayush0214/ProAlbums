@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:photo_manager/photo_manager.dart';
 import 'package:proalbums/core/logging/app_logger.dart';
 
@@ -90,40 +92,74 @@ final class PhotoManagerAlbumDataSource {
     return asset;
   }
 
-  /// All items of one album, newest first.
-  Future<List<AssetEntity>> loadItems(
+  // Asked from photo_manager in slices. One call for a whole big album (2600+
+  // items) keeps the app busy for about a second; slices let the screen keep
+  // drawing in between.
+  static const int _slice = 400;
+
+  Future<AssetPathEntity?> _pathFor(
     String albumId, {
     required String allId,
     required String videosId,
   }) async {
-    final AssetPathEntity? path;
     if (albumId == allId || albumId == videosId) {
       final paths = await PhotoManager.getAssetPathList(
         onlyAll: true,
         type: albumId == videosId ? RequestType.video : RequestType.common,
         filterOption: _filter(),
       );
-      path = paths.isEmpty ? null : paths.first;
-    } else {
-      try {
-        path = await AssetPathEntity.fromId(
-          albumId,
-          filterOption: _filter(),
-          type: RequestType.common,
-        );
-      } on StateError {
-        // The folder is gone: its last picture was deleted or moved, so
-        // Android dropped the album. That is an EMPTY album, not an error
-        // (an error would keep the old pictures on screen).
-        return const <AssetEntity>[];
-      }
+      return paths.isEmpty ? null : paths.first;
     }
+    try {
+      return await AssetPathEntity.fromId(
+        albumId,
+        filterOption: _filter(),
+        type: RequestType.common,
+      );
+    } on StateError {
+      // The folder is gone: its last picture was deleted or moved, so
+      // Android dropped the album. That is an EMPTY album, not an error
+      // (an error would keep the old pictures on screen).
+      return null;
+    }
+  }
+
+  /// The newest [limit] items of one album, fast: the first screens of a big
+  /// album can be drawn while [loadItems] is still reading the rest.
+  Future<List<AssetEntity>> loadFirstItems(
+    String albumId, {
+    required String allId,
+    required String videosId,
+    required int limit,
+  }) async {
+    final path = await _pathFor(albumId, allId: allId, videosId: videosId);
+    if (path == null) return const <AssetEntity>[];
+    final assets = await path.getAssetListRange(start: 0, end: limit);
+    _remember(assets);
+    return assets;
+  }
+
+  /// All items of one album, newest first.
+  Future<List<AssetEntity>> loadItems(
+    String albumId, {
+    required String allId,
+    required String videosId,
+  }) async {
+    final path = await _pathFor(albumId, allId: allId, videosId: videosId);
     if (path == null) return const <AssetEntity>[];
 
     final count = await path.assetCountAsync;
     if (count == 0) return const <AssetEntity>[];
-    final assets = await path.getAssetListRange(start: 0, end: count);
-    _remember(assets);
+
+    final assets = <AssetEntity>[];
+    for (var start = 0; start < count; start += _slice) {
+      final slice = await path.getAssetListRange(
+        start: start,
+        end: math.min(start + _slice, count),
+      );
+      _remember(slice);
+      assets.addAll(slice);
+    }
     return assets;
   }
 }

@@ -2,6 +2,17 @@ import 'dart:math' as math;
 
 import 'package:proalbums/features/gallery/presentation/grid/gallery_row.dart';
 
+/// Where the grid's FIRST row starts inside its scroll view.
+///
+/// Photos: 0 (the toolbar is a row of the grid). An album page has a
+/// collapsing app bar ABOVE the grid in the same scroll view, so its rows start
+/// lower. The grid measures that (see GalleryGrid) and writes it here; the
+/// geometry then subtracts it, so the date header, fast scroller, drag select
+/// and zoom anchor all stay exact.
+final class GridOrigin {
+  double extent = 0;
+}
+
 /// Sizes and scroll offsets of every row, for one (rows, width, columns).
 ///
 /// All heights are plain numbers, so nothing has to be laid out to know where
@@ -15,6 +26,7 @@ final class GalleryGeometry {
     required this.width,
     required this.columns,
     this.reversed = false,
+    this.origin,
   });
 
   static const double gap = 2;
@@ -27,6 +39,15 @@ final class GalleryGeometry {
 
   /// true when the ListView is reversed (newest at the bottom).
   final bool reversed;
+
+  /// Space above the first row in the scroll view (see [GridOrigin]).
+  /// Not supported together with [reversed].
+  final GridOrigin? origin;
+
+  double get _lead => origin?.extent ?? 0;
+
+  /// Does this grid have date headers at all? (An album grid has none.)
+  late final bool hasHeaders = _headerRows.isNotEmpty;
 
   /// Square thumbnail side.
   late final double cellSize = (width - gap * (columns - 1)) / columns;
@@ -59,15 +80,18 @@ final class GalleryGeometry {
 
   double get totalExtent => _starts.last;
 
-  /// ScrollController offset -> top-down offset.
+  /// ScrollController offset -> top-down offset. Can be NEGATIVE while the
+  /// content above the first row (an album's app bar) is still on screen.
   double displayOffsetFor(double controllerOffset, double viewportHeight) =>
       reversed
           ? math.max(0, totalExtent - controllerOffset - viewportHeight)
-          : controllerOffset;
+          : controllerOffset - _lead;
 
   /// top-down offset -> ScrollController offset (inverse of the above).
   double controllerOffsetFor(double displayOffset, double viewportHeight) =>
-      reversed ? totalExtent - displayOffset - viewportHeight : displayOffset;
+      reversed
+          ? totalExtent - displayOffset - viewportHeight
+          : displayOffset + _lead;
 
   /// The row that covers [displayOffset] (clamped to the first/last row).
   int rowIndexAt(double displayOffset) {

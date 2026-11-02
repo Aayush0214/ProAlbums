@@ -6,12 +6,14 @@ import 'package:proalbums/core/theme/app_colors.dart';
 /// come from the app theme (dialogTheme).
 ///
 /// Returns true when the action button was pressed. [destructive] paints the
-/// button with the theme's error colour (delete, turn off ...).
+/// button with the theme's error colour (delete, turn off ...). [cancelLabel]
+/// is the text of the second button ("Not now" ...).
 Future<bool?> showConfirmDialog(
   BuildContext context, {
   required String title,
   required String message,
   required String confirmLabel,
+  String cancelLabel = 'Cancel',
   bool destructive = true,
 }) {
   return showDialog<bool>(
@@ -54,7 +56,7 @@ Future<bool?> showConfirmDialog(
             const SizedBox(height: 4),
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              child: Text(cancelLabel),
             ),
           ],
         ),

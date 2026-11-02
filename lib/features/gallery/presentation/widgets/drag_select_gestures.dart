@@ -4,9 +4,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_geometry.dart';
 import 'package:proalbums/features/gallery/presentation/providers/drag_selection.dart';
-import 'package:proalbums/features/gallery/presentation/providers/gallery_rows_provider.dart';
 import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
 
 /// Long press a photo, then slide the finger: every photo between the start
@@ -19,6 +19,7 @@ class DragSelectGestures extends ConsumerStatefulWidget {
     required this.controller,
     required this.geometry,
     required this.viewportHeight,
+    required this.items,
     required this.child,
     this.enabled = true,
     super.key,
@@ -30,6 +31,10 @@ class DragSelectGestures extends ConsumerStatefulWidget {
   final ScrollController controller;
   final GalleryGeometry geometry;
   final double viewportHeight;
+
+  /// The items of the grid in DISPLAY order (the same list the rows were cut
+  /// from), so ANY grid can use drag select, not only the Photos tab.
+  final List<MediaItem> items;
   final Widget child;
 
   @override
@@ -70,7 +75,7 @@ class _DragSelectGesturesState extends ConsumerState<DragSelectGestures> {
     // A pinch often starts with one finger resting for half a second. That
     // is not a long press on a photo.
     if (!widget.enabled || _pointers > 1) return;
-    final items = ref.read(photosDisplayItemsProvider);
+    final items = widget.items;
     final index = _indexAt(details.localPosition);
     if (index == null || index >= items.length) return;
 
@@ -105,7 +110,7 @@ class _DragSelectGesturesState extends ConsumerState<DragSelectGestures> {
 
   void _applyUpTo(int index) {
     if (index == _current) return;
-    final items = ref.read(photosDisplayItemsProvider);
+    final items = widget.items;
     if (items.isEmpty) return;
     _current = math.min(index, items.length - 1);
 

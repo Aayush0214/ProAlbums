@@ -33,7 +33,10 @@ class MediaThumbnail extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final getThumbnail = ref.watch(getMediaThumbnailUseCaseProvider);
+    // read, NOT watch: the use case never changes, and a watch would make
+    // every tile subscribe to the provider (and unsubscribe when it scrolls
+    // away). That subscribe/unsubscribe churn showed up in the CPU profile.
+    final getThumbnail = ref.read(getMediaThumbnailUseCaseProvider);
 
     return ColoredBox(
       color: context.colors.surfaceContainerHigh,

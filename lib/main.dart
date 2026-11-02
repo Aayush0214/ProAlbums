@@ -25,6 +25,12 @@ Future<void> main() async {
   };
 
   WidgetsFlutterBinding.ensureInitialized();
+  // Default cache is 100 MB / 1000 images: a 3-column grid thumbnail is ~0.7 MB
+// decoded, so the grid evicted and re-decoded constantly (ImageCache._checkCacheSize
+// was ~4% of CPU in the profile).
+  PaintingBinding.instance.imageCache
+    ..maximumSizeBytes = 256 << 20
+    ..maximumSize = 3000;
   await AppOrientation.lockPortrait();
   FrameMonitor.start();
   AppLogger.d('boot: binding ready');

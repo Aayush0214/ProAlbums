@@ -48,6 +48,7 @@ void main() {
             controller: controller,
             geometry: geometry,
             viewportHeight: 600,
+            items: items,
             child: ListView(
               controller: controller,
               children: const [SizedBox(height: 2000)],
@@ -102,6 +103,7 @@ void main() {
             controller: controller,
             geometry: GalleryGeometry(rows: rows, width: 400, columns: 4),
             viewportHeight: 600,
+            items: items,
             enabled: false,
             child: ListView(
               controller: controller,

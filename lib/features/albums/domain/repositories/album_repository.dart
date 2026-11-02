@@ -9,6 +9,14 @@ abstract interface class AlbumRepository {
   /// Everything inside one album, newest first.
   FutureResult<List<MediaItem>> getAlbumItems(String albumId);
 
+  /// Only the newest [limit] pictures of one album, quickly, so a big album
+  /// can show its first screens before [getAlbumItems] has read everything.
+  /// Empty for Favorites / empty folders (their full load is already quick).
+  FutureResult<List<MediaItem>> getFirstAlbumItems(
+    String albumId, {
+    required int limit,
+  });
+
   /// One picture / video by its id (the saved album cover). null if gone.
   Future<MediaItem?> getMediaItem(String id);
 }

@@ -1,27 +1,28 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/albums/presentation/providers/album_prefs_controller.dart';
+import 'package:proalbums/features/albums/presentation/providers/album_rows_provider.dart';
 import 'package:proalbums/features/albums/presentation/providers/albums_providers.dart';
 import 'package:proalbums/features/albums/presentation/widgets/album_selection_widgets.dart';
+import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_page_request.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_grid.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_grid_skeleton.dart';
 import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/browsing_order_sheet.dart';
-import 'package:proalbums/features/gallery/presentation/widgets/pinch_zoom_detector.dart';
-import 'package:proalbums/features/gallery/presentation/widgets/selectable_tile.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selection_action_bar.dart';
 import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
 
 enum _DetailMenu { zoomIn, zoomOut, browsingOrder, changeCover }
 
-/// What is inside one album: a grid; tap opens the viewer (swipe through THIS
-/// album). Zoom (pinch + menu) and "Browsing order" are the same components
-/// and rules as the Photos tab. Select, Change cover and Move/Copy come next.
+/// What is inside one album: tap opens the viewer (swipe through THIS album).
+/// The grid is the SAME [GalleryGrid] as the Photos tab, so it has the same
+/// features: pinch zoom, drag select, the fast scroll handle, the same
+/// thumbnails. Only the app bar and the data are the album's own.
 class AlbumDetailPage extends ConsumerStatefulWidget {
   const AlbumDetailPage({
     required this.albumId,
@@ -37,13 +38,9 @@ class AlbumDetailPage extends ConsumerStatefulWidget {
 }
 
 class _AlbumDetailPageState extends ConsumerState<AlbumDetailPage> {
-  static const double _gap = 1;
-
   final ScrollController _scroll = ScrollController();
-  bool _pinching = false;
   bool _hadItems = false;
   bool _closing = false;
-  MediaSortOrder? _positionedFor;
 
   // The Photos tab's selection state is reused here (same bottom bar, same
   // tile). It must be OFF again when this page closes.
@@ -63,21 +60,6 @@ class _AlbumDetailPageState extends ConsumerState<AlbumDetailPage> {
     super.dispose();
   }
 
-  /// "Newest at the bottom": the list starts scrolled to the end, so the
-  /// newest pictures are what you see first (same as the Photos tab).
-  void _positionIfNeeded(MediaSortOrder order) {
-    if (_positionedFor == order) return;
-    _positionedFor = order;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_scroll.hasClients) return;
-      _scroll.jumpTo(
-        order == MediaSortOrder.oldestFirst
-            ? _scroll.position.maxScrollExtent
-            : 0,
-      );
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final albumId = widget.albumId;
@@ -86,12 +68,14 @@ class _AlbumDetailPageState extends ConsumerState<AlbumDetailPage> {
     final settings = ref.watch(albumViewSettingsProvider);
     final controller = ref.read(albumViewSettingsProvider.notifier);
     final loading = loaded.isLoading && items.isEmpty;
-    final selection = ref.watch(photosSelectionControllerProvider);
-    final selecting = selection.active;
+    // Only "is selecting?" here. The count is watched inside the header, so
+    // selecting one more picture does not rebuild the whole page.
+    final selecting = ref.watch(
+      photosSelectionControllerProvider.select((s) => s.active),
+    );
 
     if (items.isNotEmpty) {
       _hadItems = true;
-      _positionIfNeeded(settings.order);
     } else if (_hadItems && !loading && !_closing) {
       // The last picture was deleted or moved away: the album is gone, so
       // leave it too (back to the albums list), like the system gallery.
@@ -99,12 +83,9 @@ class _AlbumDetailPageState extends ConsumerState<AlbumDetailPage> {
       _closeWhenOnTop();
     }
 
-    final width = MediaQuery.sizeOf(context).width;
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final columns = settings.columns;
-    final cell = (width - _gap * (columns - 1)) / columns;
-    // Thumbnail size in pixels, in steps of 64 so the cache is reused.
-    final thumb = math.max(128, (cell * dpr / 64).ceil() * 64);
+    final header = selecting
+        ? _selectionHeader(items)
+        : _appBar(settings.canZoomIn, settings.canZoomOut);
 
     return PopScope(
       // Back while selecting = leave select mode, not the album.
@@ -113,110 +94,108 @@ class _AlbumDetailPageState extends ConsumerState<AlbumDetailPage> {
         if (!didPop) _selection.exit();
       },
       child: Scaffold(
-      bottomNavigationBar: selecting
-          ? SelectionActionBar(items: albumDisplayItemsProvider(albumId))
-          : null,
-      body: PinchZoomDetector(
-        onZoomIn: controller.zoomIn,
-        onZoomOut: controller.zoomOut,
-        onPinchActiveChanged: (active) {
-          if (_pinching != active) setState(() => _pinching = active);
-        },
-        child: CustomScrollView(
-            controller: _scroll,
-            // Two fingers = zoom, not scroll.
-            physics: _pinching ? const NeverScrollableScrollPhysics() : null,
-            slivers: [
-              if (selecting)
-                AlbumSelectionHeader(
-                  selectedCount: selection.count,
-                  itemCount: items.length,
-                  onSelectAllToggle: () => selection.count == items.length
-                      ? _selection.clearSelection()
-                      : _selection.selectAll([for (final i in items) i.id]),
-                  onClose: _selection.exit,
-                )
-              else
-              CollapsingSliverAppBar(
-                title: widget.title,
-                leading: const BackButton(),
-                actions: [
-                  IconButton(
-                    tooltip: 'Select',
-                    icon: const Icon(Icons.check_box_outlined),
-                    onPressed: _selection.start,
-                  ),
-                  PopupMenuButton<_DetailMenu>(
-                    tooltip: 'More',
-                    onSelected: (item) => _onMenu(item),
-                    itemBuilder: (context) => [
-                      // Same rule as the Photos tab: no "Zoom in" at the
-                      // biggest photos, no "Zoom out" at the smallest.
-                      if (settings.canZoomIn)
-                        const PopupMenuItem(
-                          value: _DetailMenu.zoomIn,
-                          child: Text('Zoom in'),
+        bottomNavigationBar: selecting
+            ? SelectionActionBar(items: albumDisplayItemsProvider(albumId))
+            : null,
+        body: items.isEmpty
+            ? CustomScrollView(
+                slivers: [
+                  header,
+                  if (loading)
+                    // Not blank while the album loads.
+                    SliverGalleryGridSkeleton(columns: settings.columns)
+                  else
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: Text(
+                          loaded.hasError
+                              ? 'Could not load this album.'
+                              : 'No photos or videos',
+                          style: context.textTheme.bodyLarge?.copyWith(
+                            color: context.colors.textSecondary,
+                          ),
                         ),
-                      if (settings.canZoomOut)
-                        const PopupMenuItem(
-                          value: _DetailMenu.zoomOut,
-                          child: Text('Zoom out'),
-                        ),
-                      const PopupMenuItem(
-                        value: _DetailMenu.browsingOrder,
-                        child: Text('Browsing order'),
                       ),
-                      const PopupMenuItem(
-                        value: _DetailMenu.changeCover,
-                        child: Text('Change cover'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              if (loading)
-                const SliverToBoxAdapter(child: SizedBox.shrink())
-              else if (items.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Center(
-                    child: Text(
-                      loaded.hasError
-                          ? 'Could not load this album.'
-                          : 'No photos or videos',
-                      style: context.textTheme.bodyLarge
-                          ?.copyWith(color: context.colors.textSecondary),
                     ),
-                  ),
-                )
-              else
-                SliverGrid.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
-                    mainAxisSpacing: _gap,
-                    crossAxisSpacing: _gap,
-                  ),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    return SelectableTile(
-                      key: ValueKey(item.id),
-                      item: item,
-                      thumbnailSize: thumb,
-                      compact: columns >= 6,
-                      items: albumDisplayItemsProvider(albumId),
-                      // Long press = start selecting with this picture.
-                      onLongPress: () => _selection.startWith(item.id),
-                    );
-                  },
-                ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
+                ],
+              )
+            : GalleryGrid(
+                controller: _scroll,
+                rows: ref.watch(albumGalleryRowsProvider(albumId)),
+                items: items,
+                columns: settings.columns,
+                reversed: false,
+                // "Newest at the bottom": start scrolled to the end, so the
+                // newest pictures are what you see first (like Photos).
+                startAtEnd: settings.order == MediaSortOrder.oldestFirst,
+                viewerItems: albumDisplayItemsProvider(albumId),
+                // The handle's track starts under the pinned app bar.
+                thumbTopInset:
+                    MediaQuery.paddingOf(context).top + kToolbarHeight + 8,
+                leadingSlivers: [header],
+                onZoomIn: controller.zoomIn,
+                onZoomOut: controller.zoomOut,
               ),
-            ],
-          ),
       ),
-      ),
+    );
+  }
+
+  Widget _selectionHeader(List<MediaItem> items) {
+    return Consumer(
+      builder: (context, ref, _) {
+        final count = ref.watch(
+          photosSelectionControllerProvider.select((s) => s.count),
+        );
+        return AlbumSelectionHeader(
+          selectedCount: count,
+          itemCount: items.length,
+          onSelectAllToggle: () => count == items.length
+              ? _selection.clearSelection()
+              : _selection.selectAll([for (final i in items) i.id]),
+          onClose: _selection.exit,
+        );
+      },
+    );
+  }
+
+  Widget _appBar(bool canZoomIn, bool canZoomOut) {
+    return CollapsingSliverAppBar(
+      title: widget.title,
+      leading: const BackButton(),
+      actions: [
+        IconButton(
+          tooltip: 'Select',
+          icon: const Icon(Icons.check_box_outlined),
+          onPressed: _selection.start,
+        ),
+        PopupMenuButton<_DetailMenu>(
+          tooltip: 'More',
+          onSelected: _onMenu,
+          itemBuilder: (context) => [
+            // Same rule as the Photos tab: no "Zoom in" at the biggest
+            // photos, no "Zoom out" at the smallest.
+            if (canZoomIn)
+              const PopupMenuItem(
+                value: _DetailMenu.zoomIn,
+                child: Text('Zoom in'),
+              ),
+            if (canZoomOut)
+              const PopupMenuItem(
+                value: _DetailMenu.zoomOut,
+                child: Text('Zoom out'),
+              ),
+            const PopupMenuItem(
+              value: _DetailMenu.browsingOrder,
+              child: Text('Browsing order'),
+            ),
+            const PopupMenuItem(
+              value: _DetailMenu.changeCover,
+              child: Text('Change cover'),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

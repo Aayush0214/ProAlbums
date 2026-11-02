@@ -112,6 +112,15 @@ Future<List<MediaItem>> albumItems(Ref ref, String albumId) async {
   return result.fold((failure) => throw failure, (items) => items);
 }
 
+/// The newest pictures of an album, read first and fast. The album page draws
+/// them while [albumItems] is still reading the whole (maybe 2600+) album.
+/// Errors are ignored here on purpose: the full load reports them.
+@riverpod
+Future<List<MediaItem>> albumFirstItems(Ref ref, String albumId) async {
+  final result = await ref.watch(getAlbumItemsUseCaseProvider).first(albumId);
+  return result.fold((failure) => const <MediaItem>[], (items) => items);
+}
+
 /// Zoom level and browsing order of the album grids. The SAME class as the
 /// Photos tab (same zoom steps, same menu rules), but its own value, so
 /// zooming an album does not change the Photos tab. Kept while the app runs.
@@ -137,10 +146,19 @@ class AlbumViewSettings extends _$AlbumViewSettings {
 /// order. A plain list, so it also works as the viewer's `items`.
 @riverpod
 List<MediaItem> albumDisplayItems(Ref ref, String albumId) {
-  final items = ref.watch(albumItemsProvider(albumId)).value ??
-      const <MediaItem>[];
   final order = ref.watch(albumViewSettingsProvider.select((s) => s.order));
-  return order == MediaSortOrder.oldestFirst
-      ? items.reversed.toList(growable: false)
-      : items;
+  final newestFirst = order == MediaSortOrder.newestFirst;
+
+  // While the whole album is still loading, show its newest pictures (only
+  // for "newest first": the rows then keep their place when the rest arrives.
+  // For "oldest first" the older pictures would be added ABOVE, and the grid
+  // would jump, so that order waits for the full list).
+  final full = ref.watch(albumItemsProvider(albumId)).value;
+  final items = full ??
+      (newestFirst
+          ? ref.watch(albumFirstItemsProvider(albumId)).value
+          : null) ??
+      const <MediaItem>[];
+
+  return newestFirst ? items : items.reversed.toList(growable: false);
 }

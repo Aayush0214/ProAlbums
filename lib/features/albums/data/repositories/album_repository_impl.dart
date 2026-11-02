@@ -124,6 +124,32 @@ final class AlbumRepositoryImpl implements AlbumRepository {
   }
 
   @override
+  FutureResult<List<MediaItem>> getFirstAlbumItems(
+    String albumId, {
+    required int limit,
+  }) async {
+    if (albumId == kFavoritesAlbumId || albumId.startsWith(kEmptyFolderPrefix)) {
+      return right<Failure, List<MediaItem>>(const <MediaItem>[]);
+    }
+    try {
+      final assets = await _dataSource.loadFirstItems(
+        albumId,
+        allId: kAllAlbumId,
+        videosId: kVideosAlbumId,
+        limit: limit,
+      );
+      return right<Failure, List<MediaItem>>([
+        for (final asset in assets) MediaItemMapper.fromAsset(asset),
+      ]);
+    } on Object catch (error, stackTrace) {
+      AppLogger.e('Could not load the first pictures', error: error, stackTrace: stackTrace);
+      return left<Failure, List<MediaItem>>(
+        const MediaFailure('Could not load this album.'),
+      );
+    }
+  }
+
+  @override
   FutureResult<List<MediaItem>> getAlbumItems(String albumId) async {
     if (albumId == kFavoritesAlbumId) {
       try {
