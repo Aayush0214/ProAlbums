@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:proalbums/features/gallery/presentation/providers/limited_access_banner_provider.dart';
 import 'package:proalbums/features/permissions/domain/entities/media_permission_status.dart';
+import 'package:proalbums/features/permissions/presentation/providers/limited_access_banner_provider.dart';
 import 'package:proalbums/features/permissions/presentation/providers/media_permission_notifier.dart';
 
 class _FakePermission extends MediaPermission {

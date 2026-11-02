@@ -7,6 +7,7 @@ import 'package:proalbums/features/favorites/presentation/providers/favorites_pr
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/providers/share_providers.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_more_actions.dart';
+import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 
 /// The viewer's actions live here ONCE, so the bottom bar (portrait) and the
 /// top bar (landscape) both call the same code.
@@ -16,11 +17,11 @@ Future<void> shareViewerItem(
   MediaItem item,
 ) async {
   final messenger = ScaffoldMessenger.of(context);
+  final width = MediaQuery.sizeOf(context).width;
   final result = await ref.read(shareMediaUseCaseProvider)([item.id]);
   result.match(
-    (failure) => messenger.showSnackBar(
-      const SnackBar(content: Text('Could not share this item.')),
-    ),
+    (failure) =>
+        showAppSnackBarOn(messenger, width, 'Could not share this item.'),
     (_) {},
   );
 }
@@ -35,11 +36,7 @@ Future<void> toggleFavorite(WidgetRef ref, MediaItem item) async {
 
 /// For buttons whose phase is not built yet.
 void showComingSoon(BuildContext context, String what) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(content: Text('$what is coming in a later update.')),
-    );
+  showAppSnackBar(context, '$what is coming in a later update.');
 }
 
 /// The "More" menu. [child] is the button the person presses.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:proalbums/features/albums/domain/entities/album.dart';
 import 'package:proalbums/features/albums/presentation/providers/album_selection_controller.dart';
@@ -33,9 +34,7 @@ class OtherAlbumsPage extends ConsumerWidget {
     // Everything was removed from Others: nothing left to show here.
     if (sections != null && albums.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted && Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        }
+        if (context.mounted && context.canPop()) context.pop();
       });
     }
 

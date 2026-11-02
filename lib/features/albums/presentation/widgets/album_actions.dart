@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/features/albums/domain/entities/album.dart';
-import 'package:proalbums/features/albums/presentation/pages/change_cover_page.dart';
 import 'package:proalbums/features/albums/presentation/providers/album_prefs_controller.dart';
 import 'package:proalbums/features/albums/presentation/providers/albums_providers.dart';
 import 'package:proalbums/features/albums/presentation/widgets/new_album_dialog.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/providers/share_providers.dart';
 import 'package:proalbums/features/trash/presentation/widgets/delete_flow.dart';
+import 'package:proalbums/shared/widgets/app_snack_bar.dart';
+import 'package:proalbums/shared/widgets/confirm_dialog.dart';
 
 /// The select-mode actions on whole albums. Each one returns true when it
 /// did something, so the screen can leave select mode.
@@ -19,11 +22,7 @@ bool isRealFolder(Album album) =>
     album.kind != AlbumKind.videos &&
     album.kind != AlbumKind.favorites;
 
-void _say(BuildContext context, String text) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(text)));
-}
+void _say(BuildContext context, String text) => showAppSnackBar(context, text);
 
 Future<List<MediaItem>> _itemsOf(WidgetRef ref, List<Album> albums) async {
   final seen = <String>{};
@@ -92,22 +91,11 @@ Future<bool> deleteAlbums(
 }
 
 Future<bool?> _confirmEmptyDelete(BuildContext context, int count) {
-  return showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Text(count == 1 ? 'Delete this album?' : 'Delete $count albums?'),
-      content: const Text('These albums have no photos or videos in them.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Delete'),
-        ),
-      ],
-    ),
+  return showConfirmDialog(
+    context,
+    title: count == 1 ? 'Delete this album?' : 'Delete $count albums?',
+    message: 'These albums have no photos or videos in them.',
+    confirmLabel: 'Delete',
   );
 }
 
@@ -191,12 +179,7 @@ Future<bool> changeCover(
   WidgetRef ref,
   Album album,
 ) async {
-  final mediaId = await Navigator.of(context, rootNavigator: true).push<String>(
-    MaterialPageRoute<String>(
-      builder: (context) =>
-          ChangeCoverPage(albumId: album.id, title: album.name),
-    ),
-  );
+  final mediaId = await context.push<String>(AppRoutes.changeCover(album.id));
   if (mediaId == null) return false;
   ref.read(albumPrefsControllerProvider.notifier).setCover(album.name, mediaId);
   return true;

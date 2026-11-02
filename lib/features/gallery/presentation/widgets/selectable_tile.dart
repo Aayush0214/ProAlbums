@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/favorites/presentation/providers/favorites_providers.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
-import 'package:proalbums/features/gallery/presentation/providers/gallery_rows_provider.dart';
 import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/open_media_viewer.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/media_thumbnail.dart';
@@ -67,11 +66,7 @@ class SelectableTile extends ConsumerWidget {
             },
       // Normal mode: open the viewer. Selection mode: select / unselect.
       onTap: mode == _TileMode.normal
-          ? () => openMediaViewer(
-              context,
-              id: item.id,
-              items: items ?? photosDisplayItemsProvider,
-            )
+          ? () => openMediaViewer(context, ref, id: item.id, items: items)
           : () => controller.toggle(item.id),
       child: Stack(
         fit: StackFit.expand,

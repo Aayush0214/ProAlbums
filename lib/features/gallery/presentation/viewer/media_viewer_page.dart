@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:proalbums/core/platform/app_orientation.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/video_playback_controller.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_math.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_bottom_bar.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_filmstrip.dart';
@@ -20,16 +22,9 @@ import 'package:proalbums/features/trash/presentation/widgets/delete_flow.dart';
 /// Full-screen viewer: swipe between photos, pinch / double tap to zoom, tap to
 /// hide the bars. Pages follow the order of the Photos tab.
 class MediaViewerPage extends ConsumerStatefulWidget {
-  const MediaViewerPage({
-    required this.initialId,
-    required this.items,
-    super.key,
-  });
+  const MediaViewerPage({required this.initialId, super.key});
 
   final String initialId;
-
-  /// The list to swipe through (see openMediaViewer).
-  final ProviderListenable<List<MediaItem>> items;
 
   @override
   ConsumerState<MediaViewerPage> createState() => _MediaViewerPageState();
@@ -37,6 +32,11 @@ class MediaViewerPage extends ConsumerStatefulWidget {
 
 class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
     with WidgetsBindingObserver {
+  /// The list to swipe through (see ViewerSession / openMediaViewer). Taken
+  /// once: it does not change while this viewer is open.
+  late final ProviderListenable<List<MediaItem>> _items =
+      ref.read(viewerSessionProvider);
+
   ExtendedPageController? _pageController;
   int _index = 0;
   String? _currentId;
@@ -74,7 +74,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
     _prepareTimer?.cancel();
     _prepareTimer = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
-      final list = ref.read(widget.items);
+      final list = ref.read(_items);
       if (_index >= list.length) return;
       final item = list[_index];
       if (item.isVideo) ref.read(videoPlaybackProvider.notifier).prepare(item);
@@ -90,7 +90,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
   }
 
   void _selectFromStrip(int index) {
-    final list = ref.read(widget.items);
+    final list = ref.read(_items);
     if (index < 0 || index >= list.length || index == _index) return;
     setState(() {
       _index = index;
@@ -135,12 +135,12 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
 
   @override
   Widget build(BuildContext context) {
-    final items = ref.watch(widget.items);
+    final items = ref.watch(_items);
 
     if (items.isEmpty) {
       // Nothing left to show (the last photo was deleted).
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.of(context).maybePop();
+        if (mounted && context.canPop()) context.pop();
       });
       return const Scaffold();
     }
@@ -213,7 +213,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
               controller: _pageController,
               itemCount: items.length,
               onPageChanged: (index) {
-                final list = ref.read(widget.items);
+                final list = ref.read(_items);
                 if (index >= list.length) return;
                 setState(() {
                   _index = index;

@@ -1,7 +1,6 @@
-import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:proalbums/features/gallery/presentation/providers/media_providers.dart';
+import 'package:proalbums/features/gallery/presentation/providers/library_reload.dart';
 import 'package:proalbums/features/trash/data/repositories/method_channel_trash_repository.dart';
 import 'package:proalbums/features/trash/domain/entities/trashed_item.dart';
 import 'package:proalbums/features/trash/domain/repositories/trash_repository.dart';
@@ -41,13 +40,7 @@ DeleteForeverUseCase deleteForeverUseCase(Ref ref) =>
 /// library changed (a delete, a restore).
 @riverpod
 Future<List<TrashedItem>> trashedItems(Ref ref) async {
-  Timer? timer;
-  ref
-    ..onDispose(() => timer?.cancel())
-    ..listen(mediaLibraryChangesProvider, (previous, next) {
-      timer?.cancel();
-      timer = Timer(const Duration(milliseconds: 400), ref.invalidateSelf);
-    });
+  reloadOnLibraryChange(ref);
   final result = await ref.watch(getTrashedItemsUseCaseProvider)();
   return result.fold((failure) => throw failure, (items) => items);
 }

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
-import 'package:proalbums/features/trash/presentation/pages/recently_deleted_page.dart';
 import 'package:proalbums/features/trash/presentation/providers/recently_deleted_setting.dart';
 import 'package:proalbums/features/trash/presentation/providers/trash_providers.dart';
 import 'package:proalbums/shared/widgets/bounce_tap.dart';
@@ -29,11 +32,7 @@ class RecentlyDeletedRow extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: BounceTap(
-        onTap: () => Navigator.of(context, rootNavigator: true).push<void>(
-          MaterialPageRoute<void>(
-            builder: (context) => const RecentlyDeletedPage(),
-          ),
-        ),
+        onTap: () => unawaited(context.push<void>(AppRoutes.recentlyDeleted)),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: scheme.surfaceContainerLow,

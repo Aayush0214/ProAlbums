@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:proalbums/core/usecase/usecase.dart';
 import 'package:proalbums/core/utils/typedefs.dart';
 import 'package:proalbums/features/permissions/domain/entities/media_permission_status.dart';
+import 'package:proalbums/features/permissions/presentation/providers/library_access_revision.dart';
 import 'package:proalbums/features/permissions/presentation/providers/permission_providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -27,11 +28,16 @@ class MediaPermission extends _$MediaPermission {
 
   /// Re-reads the status (no dialog).
   Future<void> refresh() async {
+    final before = state.value;
     state = await AsyncValue.guard(
-      () => _unwrap(
+          () => _unwrap(
         ref.read(getMediaPermissionStatusUseCaseProvider)(const NoParams()),
       ),
     );
+    // limited -> all (or the reverse): the albums must load again.
+    if (before != null && before != state.value) {
+      ref.read(libraryAccessRevisionProvider.notifier).bump();
+    }
   }
 
   /// Shows the system dialog and stores the answer.
@@ -51,6 +57,7 @@ class MediaPermission extends _$MediaPermission {
   Future<void> manageLimitedAccess() async {
     await ref.read(presentLimitedAccessUseCaseProvider)(const NoParams());
     await refresh();
+    ref.read(libraryAccessRevisionProvider.notifier).bump();
   }
 
   // Either<Failure, T> -> value or AsyncError(failure). Riverpod's AsyncValue

@@ -179,12 +179,11 @@ class FolderChannel(private val activity: Activity) :
     private fun listFolders(): List<String> {
         val created = prefs.getStringSet(KEY_CREATED, emptySet()).orEmpty()
         return created
-            // Only folders with NOTHING inside. Android keeps deleted pictures
-            // in the folder as hidden ".trashed-..." files, and such a folder is
-            // a deleted album, not an empty one.
             .filter { name ->
                 val dir = File(picturesDir(), name)
-                dir.isDirectory && dir.list().isNullOrEmpty()
+                // Nothing VISIBLE inside: a new album, or one whose pictures were
+                // deleted (they wait in Recently deleted). Both stay as blank albums.
+                dir.isDirectory && !hasVisibleFiles(dir)
             }
             .sorted()
     }
@@ -337,6 +336,11 @@ class FolderChannel(private val activity: Activity) :
         }
         return true
     }
+
+    /** The folder holds something the person can see. Hidden ".trashed-…" files
+     *  (Android's trash) do not count. */
+    private fun hasVisibleFiles(dir: File): Boolean =
+        dir.list()?.any { !it.startsWith(".") } == true
 
     private companion object {
         const val CHANNEL = "com.aayush.proalbums/folders"

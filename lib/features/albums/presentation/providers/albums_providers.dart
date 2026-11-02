@@ -17,6 +17,7 @@ import 'package:proalbums/features/favorites/presentation/providers/favorites_pr
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_page_request.dart';
 import 'package:proalbums/features/gallery/domain/entities/photos_view_settings.dart';
+import 'package:proalbums/features/gallery/presentation/providers/library_reload.dart';
 import 'package:proalbums/features/gallery/presentation/providers/media_providers.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -56,23 +57,11 @@ GetAlbumsUseCase getAlbumsUseCase(Ref ref) =>
 GetAlbumItemsUseCase getAlbumItemsUseCase(Ref ref) =>
     GetAlbumItemsUseCase(ref.watch(albumRepositoryProvider));
 
-/// Loads again a moment after the phone's library changed. The wait joins a
-/// burst of changes (a delete of 50 photos) into ONE reload.
-void _reloadOnLibraryChange(Ref ref) {
-  Timer? timer;
-  ref
-    ..onDispose(() => timer?.cancel())
-    ..listen(mediaLibraryChangesProvider, (previous, next) {
-      timer?.cancel();
-      timer = Timer(const Duration(milliseconds: 400), ref.invalidateSelf);
-    });
-}
-
 /// The albums of the Albums tab, already in their sections. The person's
 /// own choices (albums sent to "Other albums", chosen covers) are applied.
 @riverpod
 Future<AlbumSections> albumSections(Ref ref) async {
-  _reloadOnLibraryChange(ref);
+  reloadOnLibraryChange(ref);
   // Loads again when a heart is added / removed (the Favorites tile appears,
   // disappears or changes its count). `.future` waits for the first value,
   // so the first load is not done twice.
@@ -114,7 +103,7 @@ Future<AlbumSections> albumSections(Ref ref) async {
 /// Everything in one album, newest first (as loaded).
 @riverpod
 Future<List<MediaItem>> albumItems(Ref ref, String albumId) async {
-  _reloadOnLibraryChange(ref);
+  reloadOnLibraryChange(ref);
   // The Favorites album follows the hearts too.
   if (albumId == kFavoritesAlbumId) {
     await ref.watch(favoriteIdsProvider.future);

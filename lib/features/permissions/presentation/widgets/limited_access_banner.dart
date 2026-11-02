@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:proalbums/features/gallery/presentation/providers/limited_access_banner_provider.dart';
-import 'package:proalbums/features/gallery/presentation/providers/photos_controller.dart';
+import 'package:proalbums/features/permissions/presentation/providers/limited_access_banner_provider.dart';
 import 'package:proalbums/features/permissions/presentation/providers/media_permission_notifier.dart';
 
 /// Shown above the grid when the user allowed only SOME photos. It explains
@@ -50,10 +49,9 @@ class LimitedAccessBanner extends ConsumerWidget {
                 Row(
                   children: [
                     TextButton(
-                      onPressed: () async {
-                        await permission.manageLimitedAccess();
-                        ref.invalidate(photosControllerProvider);
-                      },
+                      // Lists reload by themselves: manageLimitedAccess()
+                      // bumps the library revision.
+                      onPressed: permission.manageLimitedAccess,
                       child: const Text('Select more'),
                     ),
                     TextButton(

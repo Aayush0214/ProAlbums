@@ -2,8 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
-import 'package:proalbums/features/albums/presentation/pages/change_cover_page.dart';
 import 'package:proalbums/features/albums/presentation/providers/album_prefs_controller.dart';
 import 'package:proalbums/features/albums/presentation/providers/albums_providers.dart';
 import 'package:proalbums/features/albums/presentation/widgets/album_selection_widgets.dart';
@@ -13,6 +14,7 @@ import 'package:proalbums/features/gallery/presentation/widgets/browsing_order_s
 import 'package:proalbums/features/gallery/presentation/widgets/pinch_zoom_detector.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selectable_tile.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selection_action_bar.dart';
+import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
 
 enum _DetailMenu { zoomIn, zoomOut, browsingOrder, changeCover }
@@ -225,28 +227,20 @@ class _AlbumDetailPageState extends ConsumerState<AlbumDetailPage> {
       await Future<void>.delayed(const Duration(milliseconds: 250));
       if (!mounted) return;
       if (ModalRoute.of(context)?.isCurrent ?? false) {
-        Navigator.of(context).pop();
+        if (context.canPop()) context.pop();
         return;
       }
     }
   }
 
   Future<void> _changeCover() async {
-    final mediaId = await Navigator.of(context, rootNavigator: true).push<String>(
-      MaterialPageRoute<String>(
-        builder: (context) =>
-            ChangeCoverPage(albumId: widget.albumId, title: widget.title),
-      ),
-    );
+    final mediaId =
+        await context.push<String>(AppRoutes.changeCover(widget.albumId));
     if (mediaId == null) return;
     ref
         .read(albumPrefsControllerProvider.notifier)
         .setCover(widget.title, mediaId);
-    if (mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Cover changed.')));
-    }
+    if (mounted) showAppSnackBar(context, 'Cover changed.');
   }
 
   void _onMenu(_DetailMenu item) {

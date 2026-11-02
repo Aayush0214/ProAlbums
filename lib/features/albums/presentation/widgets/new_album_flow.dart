@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/features/albums/domain/entities/folder_outcomes.dart';
-import 'package:proalbums/features/albums/presentation/pages/album_picker_page.dart';
 import 'package:proalbums/features/albums/presentation/providers/albums_providers.dart';
 import 'package:proalbums/features/albums/presentation/widgets/new_album_dialog.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
+import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 
 enum _AddChoice { copy, move }
 
@@ -15,10 +17,10 @@ enum _AddChoice { copy, move }
 ///  2. pick items (optional)
 ///  3. Copy / Move / Cancel
 Future<void> startNewAlbumFlow(BuildContext context, WidgetRef ref) async {
+  // Taken now: the screens change while the person goes through the steps.
   final messenger = ScaffoldMessenger.of(context);
-  void say(String text) => messenger
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(text)));
+  final screenWidth = MediaQuery.sizeOf(context).width;
+  void say(String text) => showAppSnackBarOn(messenger, screenWidth, text);
 
   // Names that are taken: every album AND every folder in Pictures.
   final sections = ref.read(albumSectionsProvider).value;
@@ -51,12 +53,7 @@ Future<void> startNewAlbumFlow(BuildContext context, WidgetRef ref) async {
   // The new (empty) album shows up in the list right away.
   ref.invalidate(albumSectionsProvider);
 
-  final picked = await Navigator.of(context, rootNavigator: true)
-      .push<List<MediaItem>>(
-    MaterialPageRoute<List<MediaItem>>(
-      builder: (context) => const AlbumPickerPage(),
-    ),
-  );
+  final picked = await context.push<List<MediaItem>>(AppRoutes.pickItems);
   if (!context.mounted) return;
   if (picked == null || picked.isEmpty) {
     say('Album "$name" created.');

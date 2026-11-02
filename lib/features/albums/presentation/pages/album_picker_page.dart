@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/albums/domain/entities/album.dart';
 import 'package:proalbums/features/albums/presentation/providers/albums_providers.dart';
@@ -54,7 +55,7 @@ class _AlbumPickerPageState extends ConsumerState<AlbumPickerPage> {
               if (inAlbum) {
                 setState(() => _openAlbum = null);
               } else {
-                Navigator.of(context).pop();
+                context.pop();
               }
             },
           ),
@@ -69,8 +70,7 @@ class _AlbumPickerPageState extends ConsumerState<AlbumPickerPage> {
             TextButton(
               onPressed: count == 0
                   ? null
-                  : () => Navigator.of(context)
-                      .pop(_selected.values.toList(growable: false)),
+                  : () => context.pop(_selected.values.toList(growable: false)),
               child: const Text('Done'),
             ),
             const SizedBox(width: 4),

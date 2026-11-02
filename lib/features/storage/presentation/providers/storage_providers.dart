@@ -1,6 +1,4 @@
-import 'dart:async';
-
-import 'package:proalbums/features/gallery/presentation/providers/media_providers.dart';
+import 'package:proalbums/features/gallery/presentation/providers/library_reload.dart';
 import 'package:proalbums/features/storage/data/repositories/method_channel_storage_repository.dart';
 import 'package:proalbums/features/storage/domain/entities/storage_usage.dart';
 import 'package:proalbums/features/storage/domain/repositories/storage_repository.dart';
@@ -21,13 +19,7 @@ GetStorageUsageUseCase getStorageUsageUseCase(Ref ref) =>
 /// changed (a delete, a restore, a new photo), so the card stays right.
 @riverpod
 Future<StorageUsage> storageUsage(Ref ref) async {
-  Timer? timer;
-  ref
-    ..onDispose(() => timer?.cancel())
-    ..listen(mediaLibraryChangesProvider, (previous, next) {
-      timer?.cancel();
-      timer = Timer(const Duration(milliseconds: 800), ref.invalidateSelf);
-    });
+  reloadOnLibraryChange(ref, delay: const Duration(milliseconds: 800));
   final result = await ref.watch(getStorageUsageUseCaseProvider)();
   return result.fold((failure) => throw failure, (usage) => usage);
 }

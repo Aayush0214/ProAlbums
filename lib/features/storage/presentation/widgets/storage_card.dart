@@ -1,14 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/storage/domain/services/format_bytes.dart';
-import 'package:proalbums/features/storage/presentation/pages/storage_analysis_page.dart';
 import 'package:proalbums/features/storage/presentation/providers/storage_providers.dart';
 import 'package:proalbums/features/storage/presentation/widgets/storage_bar.dart';
 import 'package:proalbums/shared/widgets/bounce_tap.dart';
 
-/// "Internal storage" at the bottom of the Albums tab: "47.4 GB used of
+/// "Internal storage" at the bottom of the Albums tab: "47.0 GB used of
 /// 107 GB" and one colour bar. Tap = the full "Storage analysis" screen.
 class StorageCard extends ConsumerWidget {
   const StorageCard({super.key});
@@ -23,11 +26,7 @@ class StorageCard extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: BounceTap(
-        onTap: () => Navigator.of(context, rootNavigator: true).push<void>(
-          MaterialPageRoute<void>(
-            builder: (context) => const StorageAnalysisPage(),
-          ),
-        ),
+        onTap: () => unawaited(context.push<void>(AppRoutes.storage)),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: scheme.surfaceContainerLow,
@@ -46,16 +45,23 @@ class StorageCard extends ConsumerWidget {
                     children: [
                       Row(
                         children: [
-                          Text('Internal storage', style: context.textTheme.titleMedium),
+                          Text(
+                            'Internal storage',
+                            style: context.textTheme.titleMedium,
+                          ),
                           const SizedBox(width: 8),
+                          // Takes the space that is left; cut with "..." on a
+                          // small screen / big font instead of overflowing.
                           Expanded(
                             child: Text(
-                              '${formatBytes(usage.used)} used of ${formatBytes(usage.total)}',
+                              '${formatBytes(usage.used)} used of '
+                              '${formatBytes(usage.total)}',
                               textAlign: TextAlign.end,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: context.textTheme.bodySmall
-                                  ?.copyWith(color: context.colors.textSecondary),
+                              style: context.textTheme.bodySmall?.copyWith(
+                                color: context.colors.textSecondary,
+                              ),
                             ),
                           ),
                         ],

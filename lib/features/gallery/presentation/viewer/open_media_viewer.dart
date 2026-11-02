@@ -1,42 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
-import 'package:proalbums/features/gallery/presentation/viewer/media_viewer_page.dart';
+import 'package:proalbums/features/gallery/presentation/providers/gallery_rows_provider.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
 
 /// Opens the full-screen viewer on top of EVERYTHING (also above the bottom
 /// navigation bar), starting at the item with [id].
 ///
-/// [items] is WHERE the swipe list comes from: the Photos tab passes its own
-/// list, an album screen will pass the album's list, search its results... The
-/// viewer itself is the same everywhere.
+/// [items] is WHERE the swipe list comes from: null = the Photos tab list, an
+/// album passes its own list, search its results... The viewer itself is the
+/// same everywhere. (How it gets there: see [ViewerSession].)
 Future<void> openMediaViewer(
-  BuildContext context, {
+  BuildContext context,
+  WidgetRef ref, {
   required String id,
-  required ProviderListenable<List<MediaItem>> items,
+  ProviderListenable<List<MediaItem>>? items,
 }) {
-  return Navigator.of(context, rootNavigator: true).push<void>(
-    PageRouteBuilder<void>(
-      transitionDuration: const Duration(milliseconds: 300),
-      reverseTransitionDuration: const Duration(milliseconds: 180),
-      pageBuilder: (context, animation, secondaryAnimation) =>
-          MediaViewerPage(initialId: id, items: items),
-      // Grows out of the middle with a small bounce (easeOutBack goes a
-      // little past 1.0 and settles). Only a scale + fade of the finished
-      // page: it costs the GPU nothing extra, so opening stays as fast.
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        final grow = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutBack,
-          reverseCurve: Curves.easeIn,
-        );
-        return FadeTransition(
-          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.86, end: 1).animate(grow),
-            child: child,
-          ),
-        );
-      },
-    ),
-  );
+  ref
+      .read(viewerSessionProvider.notifier)
+      .start(items ?? photosDisplayItemsProvider);
+  return context.push<void>(AppRoutes.viewer(id));
 }

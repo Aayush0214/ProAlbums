@@ -11,3 +11,9 @@ import 'package:flutter/material.dart';
 /// a global key remains immune to such rebuild cycles.
 ///
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
+/// The navigator that sits ABOVE the bottom bar. Screens that must cover the
+/// whole screen (Settings, Recently deleted, Storage, the viewer ...) use it
+/// as their `parentNavigatorKey`. Public, so every route file can use it.
+final GlobalKey<NavigatorState> rootNavigatorKey =
+GlobalKey<NavigatorState>(debugLabel: 'root');

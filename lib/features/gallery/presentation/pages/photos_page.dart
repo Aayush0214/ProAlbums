@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:proalbums/features/gallery/presentation/pages/photos_body.dart';
 import 'package:proalbums/features/gallery/presentation/providers/gallery_rows_provider.dart';
-import 'package:proalbums/features/gallery/presentation/providers/limited_access_banner_provider.dart';
 import 'package:proalbums/features/gallery/presentation/providers/photos_controller.dart';
 import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
-import 'package:proalbums/features/gallery/presentation/widgets/limited_access_banner.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/photos_app_bar.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selection_action_bar.dart';
-import 'package:proalbums/features/permissions/presentation/providers/media_permission_notifier.dart';
+import 'package:proalbums/features/permissions/presentation/providers/library_access_revision.dart';
+import 'package:proalbums/features/permissions/presentation/providers/limited_access_banner_provider.dart';
+import 'package:proalbums/features/permissions/presentation/providers/visible_media_providers.dart';
+import 'package:proalbums/features/permissions/presentation/widgets/limited_access_banner.dart';
+import 'package:proalbums/features/permissions/presentation/widgets/limited_access_empty_state.dart';
 import 'package:proalbums/shared/shell/shell_bottom_bar_provider.dart';
 
 /// The Photos tab: app bar + the grid (+ the action bar while selecting).
@@ -24,17 +26,18 @@ class PhotosPage extends ConsumerWidget {
       photosSelectionControllerProvider.select((s) => s.active),
     );
 
-    // The user changed the photo access (Select more / Allow all in system
-    // Settings): the library is different now, so load it again.
-    ref.listen(mediaPermissionProvider, (previous, next) {
-      final before = previous?.value;
-      final after = next.value;
-      if (before != null && after != null && before != after) {
-        ref.invalidate(photosControllerProvider);
-      }
-    });
+    // The user changed the photo access (Select more / Allow all): the
+    // library is different now, so load it again.
+    ref.listen(
+      libraryAccessRevisionProvider,
+      (previous, next) => ref.invalidate(photosControllerProvider),
+    );
 
-    final showBanner = ref.watch(showLimitedAccessBannerProvider);
+    // Allowed only selected photos and selected none: explain, do not show
+    // a blank grid.
+    final limitedEmpty = ref.watch(limitedLibraryIsEmptyProvider);
+    final showBanner =
+        ref.watch(showLimitedAccessBannerProvider) && !limitedEmpty;
 
     // While selecting, the action bar takes the place of the navigation bar.
     ref.listen(
@@ -67,7 +70,9 @@ class PhotosPage extends ConsumerWidget {
             if (showBanner && !immersive && !selecting)
               const LimitedAccessBanner(),
             Expanded(
-              child: PhotosBody(
+              child: limitedEmpty
+                  ? const LimitedAccessEmptyState()
+                  : PhotosBody(
                 // Status bar + app bar. Measured HERE, above the Scaffold, so
                 // it is exact whether the body goes behind the app bar or not.
                 appBarExtent: MediaQuery.paddingOf(context).top + kToolbarHeight,

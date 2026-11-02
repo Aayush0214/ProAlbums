@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +9,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/albums/domain/entities/album.dart';
-import 'package:proalbums/features/albums/presentation/pages/other_albums_page.dart';
 import 'package:proalbums/features/albums/presentation/providers/album_selection_controller.dart';
 import 'package:proalbums/features/albums/presentation/providers/albums_providers.dart';
 import 'package:proalbums/features/albums/presentation/widgets/album_select_bar.dart';
@@ -17,6 +18,10 @@ import 'package:proalbums/features/albums/presentation/widgets/new_album_flow.da
 import 'package:proalbums/features/albums/presentation/widgets/open_album.dart';
 import 'package:proalbums/features/albums/presentation/widgets/other_albums_tile.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_actions.dart';
+import 'package:proalbums/features/permissions/presentation/providers/limited_access_banner_provider.dart';
+import 'package:proalbums/features/permissions/presentation/providers/visible_media_providers.dart';
+import 'package:proalbums/features/permissions/presentation/widgets/limited_access_banner.dart';
+import 'package:proalbums/features/permissions/presentation/widgets/limited_access_empty_state.dart';
 import 'package:proalbums/features/storage/presentation/widgets/storage_card.dart';
 import 'package:proalbums/features/trash/presentation/widgets/recently_deleted_row.dart';
 import 'package:proalbums/shared/shell/shell_bottom_bar_provider.dart';
@@ -86,6 +91,10 @@ class AlbumsPage extends ConsumerWidget {
       ),
     ];
 
+    // Allowed only selected photos and selected none: explain, do not show
+    // a blank screen.
+    final limitedEmpty = ref.watch(limitedLibraryIsEmptyProvider);
+
     final data = sections.value;
     final selectable = data == null ? <Album>[] : [...data.top, ...data.more];
     final selected = [
@@ -96,9 +105,9 @@ class AlbumsPage extends ConsumerWidget {
     final Widget header = selection.active
         ? AlbumSelectionHeader(
             selectedCount: selected.length,
-subtitle: selected.isEmpty
-            ? null
-            : '${NumberFormat.decimalPattern().format(selected.fold(0, (sum, a) => sum + a.count))} images or videos in total',
+            subtitle: selected.isEmpty
+                ? null
+                : '${NumberFormat.decimalPattern().format(selected.fold(0, (sum, a) => sum + a.count))} images or videos in total',
             itemCount: selectable.length,
             onSelectAllToggle: () => selected.length == selectable.length
                 ? selectionController.clear()
@@ -155,6 +164,18 @@ subtitle: selected.isEmpty
             ],
           ),
           data: (data) {
+            if (limitedEmpty) {
+              return CustomScrollView(
+                slivers: [
+                  header,
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: LimitedAccessEmptyState(),
+                  ),
+                ],
+              );
+            }
+
             Widget tile(Album album) => selection.active
                 ? SelectableAlbumTile(
                     album: album,
@@ -189,11 +210,7 @@ subtitle: selected.isEmpty
                     albums: data.other,
                     onTap: () {
                       if (selection.active) return;
-                      Navigator.of(context, rootNavigator: true).push<void>(
-                        MaterialPageRoute<void>(
-                          builder: (context) => const OtherAlbumsPage(),
-                        ),
-                      );
+                      unawaited(context.push<void>(AppRoutes.otherAlbums));
                     },
                   ),
               ],
@@ -231,6 +248,7 @@ class _Grid extends StatelessWidget {
     return CustomScrollView(
       slivers: [
         header,
+        const _LimitedBannerSliver(),
         SliverPadding(
           // Space between the app bar and the first row of albums.
           padding: const EdgeInsets.fromLTRB(
@@ -265,6 +283,19 @@ class _Grid extends StatelessWidget {
           ),
         SliverToBoxAdapter(child: SizedBox(height: bottom)),
       ],
+    );
+  }
+}
+
+/// The "Only some photos are shown" banner (same one as the Photos tab).
+class _LimitedBannerSliver extends ConsumerWidget {
+  const _LimitedBannerSliver();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final show = ref.watch(showLimitedAccessBannerProvider);
+    return SliverToBoxAdapter(
+      child: show ? const LimitedAccessBanner() : const SizedBox.shrink(),
     );
   }
 }

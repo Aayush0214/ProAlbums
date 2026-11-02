@@ -1,53 +1,63 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:proalbums/app/navigation/last_tab_provider.dart';
+import 'package:proalbums/app/router/app_keys.dart';
 import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/app/shell/main_shell_page.dart';
+import 'package:proalbums/features/albums/presentation/pages/album_detail_page.dart';
+import 'package:proalbums/features/albums/presentation/pages/album_picker_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/albums_page.dart';
+import 'package:proalbums/features/albums/presentation/pages/change_cover_page.dart';
+import 'package:proalbums/features/albums/presentation/pages/other_albums_page.dart';
 import 'package:proalbums/features/gallery/presentation/pages/photos_page.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/viewer_page_route.dart';
 import 'package:proalbums/features/permissions/presentation/pages/permission_page.dart';
 import 'package:proalbums/features/permissions/presentation/providers/media_permission_notifier.dart';
 import 'package:proalbums/features/recommended/presentation/pages/for_you_page.dart';
 import 'package:proalbums/features/search/presentation/pages/search_page.dart';
 import 'package:proalbums/features/settings/presentation/screens/settings_screen.dart';
+import 'package:proalbums/features/storage/presentation/pages/storage_analysis_page.dart';
+import 'package:proalbums/features/trash/presentation/pages/recently_deleted_page.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'app_router.g.dart';
 
-/// The router lives in a provider (not a global variable) so that, in Phase 1,
-/// its `redirect` can `ref.watch` the permission state and send the user to the
+/// The router lives in a provider (not a global variable) so that its
+/// `redirect` can `ref.watch` the permission state and send the user to the
 /// permission screen automatically.
 ///
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
-
+/// Rule: without media access EVERY screen except the permission screen is
+/// closed (Settings included: it is opened from the ⋮ menu of a tab anyway).
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
   // go_router re-runs `redirect` whenever this notifier changes.
   final permissionChanged = ValueNotifier<int>(0);
-  ref.listen(mediaPermissionProvider, (previous, next) => permissionChanged.value++);
+  ref.listen(
+    mediaPermissionProvider,
+    (previous, next) => permissionChanged.value++,
+  );
 
   final router = GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: rootNavigatorKey,
     initialLocation: ref.read(lastTabProvider).path,
     debugLogDiagnostics: kDebugMode,
     refreshListenable: permissionChanged,
     redirect: (context, state) {
       final location = state.matchedLocation;
-      if (location == AppRoutes.settings) return null; // works without media access
-
-      final hasAccess = ref.read(mediaPermissionProvider).value?.hasAccess ?? false;
+      final hasAccess =
+          ref.read(mediaPermissionProvider).value?.hasAccess ?? false;
       final onPermissionPage = location == AppRoutes.permission;
 
       if (!hasAccess) return onPermissionPage ? null : AppRoutes.permission;
-      if (onPermissionPage) return ref.read(lastTabProvider).path;  // was: AppRoutes.photos
+      if (onPermissionPage) return ref.read(lastTabProvider).path;
       return null;
     },
     routes: [
       // Each branch keeps its own navigation stack and scroll position, so
       // switching tabs never rebuilds or loses the user's place.
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) => MainShellPage(navigationShell: navigationShell),
+        builder: (context, state, navigationShell) =>
+            MainShellPage(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
             routes: [
@@ -83,16 +93,59 @@ GoRouter appRouter(Ref ref) {
           ),
         ],
       ),
+
+      // ---- Full-screen pages: open above the bottom bar ------------------
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.permission,
         builder: (context, state) => const PermissionPage(),
       ),
-      // Full-screen Settings Route (pushed over the bottom navigation bar)
       GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
+        parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.settings,
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.recentlyDeleted,
+        builder: (context, state) => const RecentlyDeletedPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.storage,
+        builder: (context, state) => const StorageAnalysisPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.otherAlbums,
+        builder: (context, state) => const OtherAlbumsPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.albumPattern,
+        builder: (context, state) => AlbumDetailPage(
+          albumId: state.pathParameters['albumId']!,
+          title: state.uri.queryParameters['name'] ?? '',
+        ),
+      ),
+      // Returns the chosen picture's id: context.push<String>(...).
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.changeCoverPattern,
+        builder: (context, state) =>
+            ChangeCoverPage(albumId: state.pathParameters['albumId']!),
+      ),
+      // Returns the chosen items: context.push<List<MediaItem>>(...).
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.pickItems,
+        builder: (context, state) => const AlbumPickerPage(),
+      ),
+      // The swipe list comes from ViewerSession (see open_media_viewer.dart).
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.viewerPattern,
+        pageBuilder: viewerPage,
       ),
     ],
   );
