@@ -7,19 +7,28 @@ import 'package:pdf/widgets.dart' as pw;
 /// 24 = about 8 mm).
 const double a4PageMargin = 24;
 
-/// An A4 portrait PDF, one JPEG picture per page, each picture as large as
-/// fits inside the margins, centred, never cropped.
+/// An A4 portrait PDF, one JPEG picture per page (Convert PDF). See
+/// [buildPicturesPdfBytes].
+Future<Uint8List> buildA4PdfBytes(List<Uint8List> jpegs) =>
+    buildPicturesPdfBytes(jpegs, PdfPageFormat.a4);
+
+/// A PDF of [format] pages (paper size + orientation, e.g. what the user
+/// chose in the print screen), one JPEG picture per page, each picture as
+/// large as fits inside the margins, centred, never cropped.
 ///
 /// The JPEG bytes go into the PDF as they are (no decode, no re-encode), so
 /// the file stays small and this is quick. Pure Dart: runs in a background
 /// isolate.
-Future<Uint8List> buildA4PdfBytes(List<Uint8List> jpegs) {
+Future<Uint8List> buildPicturesPdfBytes(
+  List<Uint8List> jpegs,
+  PdfPageFormat format,
+) {
   final document = pw.Document(title: 'ProAlbums', creator: 'ProAlbums');
   for (final jpeg in jpegs) {
     final image = pw.MemoryImage(jpeg);
     document.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
+        pageFormat: format,
         margin: const pw.EdgeInsets.all(a4PageMargin),
         build: (context) =>
             pw.Center(child: pw.Image(image, fit: pw.BoxFit.contain)),

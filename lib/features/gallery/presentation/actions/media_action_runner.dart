@@ -5,6 +5,7 @@ import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
 import 'package:proalbums/features/gallery/presentation/providers/share_providers.dart';
+import 'package:proalbums/features/pdf/presentation/widgets/print_pictures_flow.dart';
 import 'package:proalbums/features/trash/presentation/widgets/delete_flow.dart';
 import 'package:proalbums/features/trash/presentation/widgets/trash_actions.dart';
 import 'package:proalbums/shared/widgets/app_snack_bar.dart';
@@ -80,9 +81,14 @@ Future<bool> runMediaAction(
       // Like the system gallery: back in the grid, the selection is over.
       return true;
 
+    case MediaAction.print:
+      // The pdf feature makes the pages; the phone's print screen does
+      // the rest. Like Share, the selection stays.
+      await printPictures(context, ref, items);
+      return false;
+
     case MediaAction.create ||
         MediaAction.hide ||
-        MediaAction.print ||
         MediaAction.setAsWallpaper ||
         MediaAction.googleLens ||
         MediaAction.rename ||

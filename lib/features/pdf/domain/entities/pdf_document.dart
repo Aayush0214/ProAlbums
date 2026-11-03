@@ -6,6 +6,11 @@ abstract final class PdfRules {
   /// added.
   static const int maxPages = 99;
 
+  /// At most this many pictures in one print job. Android has no limit of
+  /// its own; all pictures are kept in memory while the pages are made, and
+  /// a huge job can stall the print screen or the printer.
+  static const int maxPrintPictures = 99;
+
   /// Where saved PDFs go (inside the phone's shared storage).
   static const String folder = 'Documents/ProAlbums';
 
@@ -15,6 +20,10 @@ abstract final class PdfRules {
   /// The suggested file name (no ".pdf"): "PDF ProAlbums_20261103_131637".
   static String defaultName(DateTime now) =>
       'PDF ProAlbums_${DateFormat('yyyyMMdd_HHmmss').format(now)}';
+
+  /// The print job's name (shown in the print screen and notification).
+  static String printJobName(DateTime now) =>
+      'ProAlbums_${DateFormat('yyyyMMdd_HHmmss').format(now)}';
 
   /// A name typed by the user, made safe for a file name: trimmed, no
   /// ".pdf" at the end (it is added when saving), no characters Android

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:printing/printing.dart';
 import 'package:proalbums/core/error/failures.dart';
 import 'package:proalbums/core/logging/app_logger.dart';
 import 'package:proalbums/core/utils/typedefs.dart';
@@ -145,6 +146,41 @@ final class DevicePdfRepository implements PdfRepository {
         error: error,
         stackTrace: stackTrace,
       );
+    }
+  }
+
+  @override
+  FutureResult<bool> printPictures({
+    required List<String> imageIds,
+    required String jobName,
+    PdfProgress? onProgress,
+    void Function()? onReady,
+  }) async {
+    try {
+      // Read once; every paper choice in the print screen only lays the same
+      // pictures out again.
+      final jpegs = <Uint8List>[];
+      for (final (index, id) in imageIds.indexed) {
+        final bytes = await _loadImage(id, imageLongEdge);
+        if (bytes != null) jpegs.add(bytes);
+        onProgress?.call(index + 1, imageIds.length);
+      }
+      if (jpegs.isEmpty) {
+        return left(const MediaFailure('Could not read the pictures.'));
+      }
+      onReady?.call();
+      // The phone's print screen (Android PrintManager): printers, copies,
+      // paper, orientation... It asks for the pages again whenever the paper
+      // or orientation changes.
+      final printed = await Printing.layoutPdf(
+        name: jobName,
+        onLayout: (format) =>
+            Isolate.run(() => buildPicturesPdfBytes(jpegs, format)),
+      );
+      return right(printed);
+    } on Object catch (error, stackTrace) {
+      AppLogger.e('Could not print', error: error, stackTrace: stackTrace);
+      return left(const StorageFailure('Could not print the pictures.'));
     }
   }
 

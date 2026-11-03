@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:image/image.dart' as img;
+import 'package:pdf/pdf.dart';
 import 'package:proalbums/core/error/failures.dart';
 import 'package:proalbums/core/utils/typedefs.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
@@ -60,6 +61,18 @@ final class _FakeRepository implements PdfRepository {
 
   @override
   Future<void> clearPageEdits() async {}
+
+  @override
+  FutureResult<bool> printPictures({
+    required List<String> imageIds,
+    required String jobName,
+    PdfProgress? onProgress,
+    void Function()? onReady,
+  }) async {
+    calls.add('print ${imageIds.join(',')} $jobName');
+    onReady?.call();
+    return right(true);
+  }
 
   @override
   FutureResult<Unit> sharePdf(String filePath) async => right(unit);
@@ -272,6 +285,61 @@ void main() {
       expect(container.read(pdfPageEditsProvider.notifier).files, {
         'b': '/e/b.jpg',
       });
+    });
+  });
+
+  group('Print', () {
+    test('job name: ProAlbums_YYYYMMDD_HHMMSS', () {
+      expect(
+        PdfRules.printJobName(DateTime(2026, 11, 3, 9, 5, 7)),
+        'ProAlbums_20261103_090507',
+      );
+    });
+
+    test('prints the pictures in order, calls onReady first', () async {
+      final repo = _FakeRepository();
+      var ready = false;
+      final result = await PrintPicturesUseCase(repo)(
+        pictures: [_item('3'), _item('1')],
+        now: DateTime(2026, 11, 3, 9, 5, 7),
+        onReady: () => ready = true,
+      );
+      expect(result.getOrElse((_) => false), isTrue);
+      expect(ready, isTrue);
+      expect(repo.calls, ['print 3,1 ProAlbums_20261103_090507']);
+    });
+
+    test('refuses videos, nothing, and more than the limit', () async {
+      final repo = _FakeRepository();
+      final print = PrintPicturesUseCase(repo);
+      final now = DateTime(2026);
+      expect((await print(pictures: [], now: now)).isLeft(), isTrue);
+      expect(
+        (await print(pictures: [_item('v', video: true)], now: now)).isLeft(),
+        isTrue,
+      );
+      expect(
+        (await print(
+          pictures: [
+            for (var i = 0; i <= PdfRules.maxPrintPictures; i++) _item('$i'),
+          ],
+          now: now,
+        )).isLeft(),
+        isTrue,
+      );
+      expect(repo.calls, isEmpty);
+    });
+
+    test('pages follow the paper chosen in the print screen', () async {
+      final jpeg = Uint8List.fromList(
+        img.encodeJpg(img.Image(width: 40, height: 20)),
+      );
+      final bytes = await buildPicturesPdfBytes([
+        jpeg,
+      ], PdfPageFormat.letter.landscape);
+      final text = String.fromCharCodes(bytes);
+      // Letter landscape = 792 x 612 points.
+      expect(text, contains('/MediaBox[0 0 792 612]'));
     });
   });
 }

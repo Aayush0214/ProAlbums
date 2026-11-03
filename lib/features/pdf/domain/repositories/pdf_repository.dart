@@ -34,6 +34,18 @@ abstract interface class PdfRepository {
   /// Forgets every page edit (a new PDF starts).
   Future<void> clearPageEdits();
 
+  /// Print: reads the pictures (one page each, [onProgress] while reading),
+  /// calls [onReady], then opens the phone's print screen named [jobName].
+  /// Paper size, orientation, copies and the printer are chosen there; the
+  /// pages are made again for every paper choice. true = sent to print (or
+  /// saved as PDF there), false = cancelled.
+  FutureResult<bool> printPictures({
+    required List<String> imageIds,
+    required String jobName,
+    PdfProgress? onProgress,
+    void Function()? onReady,
+  });
+
   /// Copies the file at [filePath] into [PdfRules.folder] as [name] + ".pdf".
   FutureResult<SavedPdf> savePdf({
     required String filePath,

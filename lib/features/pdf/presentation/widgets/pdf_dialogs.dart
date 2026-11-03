@@ -115,12 +115,15 @@ class _SavePdfDialogState extends State<_SavePdfDialog> {
   }
 }
 
-/// "Generating PDF" with a bar while the pictures are read ([progress] =
-/// done / total). Cannot be closed by the user; the caller pops it.
+/// [title] ("Generating PDF", "Preparing to print") with an optional
+/// [message] and a bar while the pictures are read ([progress] = done /
+/// total). Cannot be closed by the user; the caller pops it.
 Future<void> showPdfProgressDialog(
   BuildContext context,
-  ValueNotifier<(int, int)> progress,
-) {
+  ValueNotifier<(int, int)> progress, {
+  String title = 'Generating PDF',
+  String? message,
+}) {
   return showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -138,7 +141,16 @@ Future<void> showPdfProgressDialog(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Generating PDF', style: context.textTheme.titleMedium),
+                  Text(title, style: context.textTheme.titleMedium),
+                  if (message != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      message,
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        color: context.colors.textSecondary,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   LinearProgressIndicator(
                     value: total == 0 ? null : done / total,

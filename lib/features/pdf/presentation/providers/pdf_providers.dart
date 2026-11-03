@@ -44,6 +44,10 @@ LoadPdfPageUseCase loadPdfPageUseCase(Ref ref) =>
 EditPdfPageUseCase editPdfPageUseCase(Ref ref) =>
     EditPdfPageUseCase(ref.watch(pdfRepositoryProvider));
 
+@Riverpod(keepAlive: true)
+PrintPicturesUseCase printPicturesUseCase(Ref ref) =>
+    PrintPicturesUseCase(ref.watch(pdfRepositoryProvider));
+
 /// The pages of the PDF being made, in order. Also the swipe list of the
 /// preview viewer (a plain list, like every viewer list).
 ///

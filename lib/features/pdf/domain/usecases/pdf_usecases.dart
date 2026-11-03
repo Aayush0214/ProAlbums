@@ -111,3 +111,37 @@ final class EditPdfPageUseCase {
     required PdfPageEditSpec spec,
   }) => _repository.savePageEdit(id: id, source: source, spec: spec);
 }
+
+/// Print (selection or viewer): the pictures, one per page, in the phone's
+/// print screen. Only pictures, at most [PdfRules.maxPrintPictures] at a
+/// time. true = sent to print, false = cancelled.
+final class PrintPicturesUseCase {
+  const PrintPicturesUseCase(this._repository);
+
+  final PdfRepository _repository;
+
+  FutureResult<bool> call({
+    required List<MediaItem> pictures,
+    required DateTime now,
+    PdfProgress? onProgress,
+    void Function()? onReady,
+  }) async {
+    if (pictures.isEmpty || pictures.any((item) => item.isVideo)) {
+      return left(const MediaFailure('Only pictures can be printed.'));
+    }
+    if (pictures.length > PdfRules.maxPrintPictures) {
+      return left(
+        const MediaFailure(
+          'You can print up to ${PdfRules.maxPrintPictures} pictures at a '
+          'time.',
+        ),
+      );
+    }
+    return _repository.printPictures(
+      imageIds: [for (final item in pictures) item.id],
+      jobName: PdfRules.printJobName(now),
+      onProgress: onProgress,
+      onReady: onReady,
+    );
+  }
+}
