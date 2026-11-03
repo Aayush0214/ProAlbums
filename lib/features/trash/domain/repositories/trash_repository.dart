@@ -51,4 +51,8 @@ abstract interface class TrashRepository {
     required bool isVideo,
     required int size,
   });
+
+  /// Where the video player can open a video that is in the trash (the
+  /// normal address does not find trashed items).
+  String playableVideoUri(String id);
 }

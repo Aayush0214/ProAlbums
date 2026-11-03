@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/core/utils/date_label.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_group.dart';
-import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selection_checkbox.dart';
 
 /// "October 12  Monday" (or "October 2026" in the month overview).
@@ -29,7 +29,7 @@ class DateHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // null = not selecting -> no checkbox.
     final selection = ref.watch(
-      photosSelectionControllerProvider
+      mediaSelectionOf(context)
           .select((s) => s.active ? s.stateOf(itemIds) : null),
     );
 
@@ -49,7 +49,7 @@ class DateHeader extends ConsumerWidget {
               GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => ref
-                    .read(photosSelectionControllerProvider.notifier)
+                    .read(mediaSelectionOf(context).notifier)
                     .toggleGroup(itemIds),
                 child: Padding(
                   padding: const EdgeInsets.only(right: 12),

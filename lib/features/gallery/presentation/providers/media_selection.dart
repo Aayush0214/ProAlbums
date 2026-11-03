@@ -1,15 +1,19 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_scope.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-part 'photos_selection_controller.g.dart';
+export 'package:proalbums/features/gallery/presentation/providers/media_scope.dart';
 
-/// Multi-select state of the Photos tab.
+part 'media_selection.g.dart';
+
 /// How many of a group of photos are selected (for the date checkboxes).
 enum SelectionState { none, partial, all }
 
+/// Multi-select state of ONE screen's grid (see [MediaScope]).
 @immutable
-final class PhotosSelection {
-  const PhotosSelection({this.active = false, this.ids = const <String>{}});
+final class MediaSelection {
+  const MediaSelection({this.active = false, this.ids = const <String>{}});
 
   /// Selection mode is on (checkmarks visible, taps select).
   /// It stays on even when nothing is selected, like the reference gallery.
@@ -32,7 +36,7 @@ final class PhotosSelection {
 
   @override
   bool operator ==(Object other) =>
-      other is PhotosSelection &&
+      other is MediaSelection &&
       other.active == active &&
       setEquals(other.ids, ids);
 
@@ -40,27 +44,37 @@ final class PhotosSelection {
   int get hashCode => Object.hash(active, Object.hashAllUnordered(ids));
 }
 
-@Riverpod(keepAlive: true)
-class PhotosSelectionController extends _$PhotosSelectionController {
+/// The selection of one screen, by its [scope] (see [MediaScope]):
+/// every screen has its OWN selection, so opening an album (or a picker)
+/// never touches the Photos tab's selection. It is dropped by itself when
+/// the screen closes (nothing watches it any more).
+@riverpod
+class MediaSelectionController extends _$MediaSelectionController {
   @override
-  PhotosSelection build() => const PhotosSelection();
+  MediaSelection build(String scope) => const MediaSelection();
 
   /// The select icon in the app bar.
-  void start() => state = const PhotosSelection(active: true);
+  void start() => state = const MediaSelection(active: true);
 
-  void exit() => state = const PhotosSelection();
+  void exit() => state = const MediaSelection();
+
+  /// Leaves selection mode if this screen is still open (callers that
+  /// awaited a dialog or another page: the screen may be gone by then).
+  void exitIfOpen() {
+    if (ref.mounted) exit();
+  }
 
   /// Long press on a photo: starts selection mode AND selects it.
   void startWith(String id) {
     if (state.active) return toggle(id);
-    state = PhotosSelection(active: true, ids: {id});
+    state = MediaSelection(active: true, ids: {id});
   }
 
   void toggle(String id) {
     if (!state.active) return;
     final next = <String>{...state.ids};
     if (!next.remove(id)) next.add(id);
-    state = PhotosSelection(active: true, ids: next);
+    state = MediaSelection(active: true, ids: next);
   }
 
   /// Date checkbox: everything selected -> unselect the day, otherwise select
@@ -74,15 +88,19 @@ class PhotosSelectionController extends _$PhotosSelectionController {
     } else {
       next.addAll(group);
     }
-    state = PhotosSelection(active: true, ids: next);
+    state = MediaSelection(active: true, ids: next);
   }
 
   /// Used by drag-select: replaces the selection (and starts selection mode).
   void setIds(Set<String> ids) =>
-      state = PhotosSelection(active: true, ids: ids);
+      state = MediaSelection(active: true, ids: ids);
 
   void selectAll(Iterable<String> ids) =>
-      state = PhotosSelection(active: true, ids: {...ids});
+      state = MediaSelection(active: true, ids: {...ids});
 
-  void clearSelection() => state = const PhotosSelection(active: true);
+  void clearSelection() => state = const MediaSelection(active: true);
 }
+
+/// Shortcut: the selection provider of the screen [context] is in.
+MediaSelectionControllerProvider mediaSelectionOf(BuildContext context) =>
+    mediaSelectionControllerProvider(MediaScope.of(context).id);

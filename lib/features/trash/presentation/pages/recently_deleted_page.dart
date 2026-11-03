@@ -1,20 +1,24 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/albums/presentation/widgets/album_selection_widgets.dart';
-import 'package:proalbums/features/trash/domain/entities/trashed_item.dart';
-import 'package:proalbums/features/trash/domain/repositories/trash_repository.dart';
+import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_grid.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_grid_skeleton.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
+import 'package:proalbums/features/gallery/presentation/widgets/selection_action_bar.dart';
 import 'package:proalbums/features/trash/domain/services/trash_days.dart';
 import 'package:proalbums/features/trash/presentation/providers/trash_providers.dart';
-import 'package:proalbums/features/trash/presentation/widgets/trashed_tile.dart';
-import 'package:proalbums/shared/widgets/app_snack_bar.dart';
+import 'package:proalbums/shared/widgets/app_back_button.dart';
 import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
-import 'package:proalbums/shared/widgets/confirm_dialog.dart';
 
-/// "Recently deleted": what Android keeps in its trash for 30 days. Select
-/// items, then Restore (back in their albums) or Delete for good.
+/// "Recently deleted": what Android keeps in its trash for 30 days, on the
+/// SHARED grid (drag select, zoom, fast scroll, shimmer while loading) with
+/// the trash context: select, then Restore (back in their albums) or Delete
+/// for good. Each tile shows the days left; a tap opens the viewer with
+/// only Restore and Delete.
 class RecentlyDeletedPage extends ConsumerStatefulWidget {
   const RecentlyDeletedPage({super.key});
 
@@ -24,297 +28,159 @@ class RecentlyDeletedPage extends ConsumerStatefulWidget {
 }
 
 class _RecentlyDeletedPageState extends ConsumerState<RecentlyDeletedPage> {
-  static const double _gap = 2;
-  static const int _columns = 3;
+  final ScrollController _scroll = ScrollController();
 
-  bool _selecting = false;
-  Set<String> _selected = {};
+  static final MediaSelectionControllerProvider _selectionProvider =
+      mediaSelectionControllerProvider(MediaScope.trash);
 
-  void _start([String? id]) {
-    HapticFeedback.selectionClick();
-    setState(() {
-      _selecting = true;
-      _selected = {?id};
-    });
-  }
+  MediaSelectionController get _selection =>
+      ref.read(_selectionProvider.notifier);
 
-  void _exit() => setState(() {
-        _selecting = false;
-        _selected = {};
-      });
-
-  void _toggle(String id) => setState(() {
-        _selected = _selected.contains(id)
-            ? ({..._selected}..remove(id))
-            : {..._selected, id};
-      });
-
-  Future<void> _restore(List<TrashedItem> chosen) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final width = MediaQuery.sizeOf(context).width;
-    final result = await ref.read(restoreFromTrashUseCaseProvider)([
-      for (final t in chosen) t.item,
-    ]);
-    result.match(
-      (failure) => showAppSnackBarOn(messenger, width, failure.message),
-      (outcome) {
-        if (outcome != TrashActionOutcome.done) return;
-        showAppSnackBarOn(
-          messenger,
-          width,
-          chosen.length == 1 ? 'Restored.' : '${chosen.length} items restored.',
-        );
-        ref.invalidate(trashedItemsProvider);
-        if (mounted) _exit();
-      },
-    );
-  }
-
-  Future<void> _deleteForever(List<TrashedItem> chosen) async {
-    final yes = await showConfirmDialog(
-      context,
-      title: chosen.length == 1
-          ? 'Delete permanently?'
-          : 'Delete ${chosen.length} items permanently?',
-      message:
-          'This cannot be undone. The files will be removed from your phone.',
-      confirmLabel: 'Delete',
-    );
-    if (yes != true || !mounted) return;
-
-    final messenger = ScaffoldMessenger.of(context);
-    final width = MediaQuery.sizeOf(context).width;
-    final result = await ref.read(deleteForeverUseCaseProvider)([
-      for (final t in chosen) t.item,
-    ]);
-    result.match(
-      (failure) => showAppSnackBarOn(messenger, width, failure.message),
-      (outcome) {
-        if (outcome != TrashActionOutcome.done) return;
-        showAppSnackBarOn(
-          messenger,
-          width,
-          chosen.length == 1
-              ? 'Deleted permanently.'
-              : '${chosen.length} items deleted permanently.',
-        );
-        ref.invalidate(trashedItemsProvider);
-        if (mounted) _exit();
-      },
-    );
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final trash = ref.watch(trashedItemsProvider);
-    final items = trash.value ?? const <TrashedItem>[];
-    final chosen = [
-      for (final t in items)
-        if (_selected.contains(t.id)) t,
-    ];
+    final items = ref.watch(trashMediaItemsProvider);
+    final expiry = ref.watch(trashExpiryByIdProvider);
+    final settings = ref.watch(trashViewSettingsProvider);
+    final zoom = ref.read(trashViewSettingsProvider.notifier);
+    final selecting = ref.watch(_selectionProvider.select((s) => s.active));
     final now = DateTime.now();
 
-    final width = MediaQuery.sizeOf(context).width;
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final cell = (width - _gap * (_columns - 1)) / _columns;
-    final thumb = ((cell * dpr) / 64).ceil() * 64;
+    // Pictures in the trash cannot be read the normal way: their small
+    // pictures come from the trash itself.
+    final isVideo = {for (final item in items) item.id: item.isVideo};
+    final repository = ref.read(trashRepositoryProvider);
+    Future<Uint8List?> loadThumbnail(String id, int size) =>
+        repository.thumbnail(id: id, isVideo: isVideo[id] ?? false, size: size);
 
-    final Widget header = _selecting
-        ? AlbumSelectionHeader(
-            selectedCount: chosen.length,
-            itemCount: items.length,
-            onSelectAllToggle: () => setState(() {
-              _selected = chosen.length == items.length
-                  ? {}
-                  : {for (final t in items) t.id};
-            }),
-            onClose: _exit,
+    final Widget header = selecting
+        ? Consumer(
+            builder: (context, ref, _) {
+              final count = ref.watch(
+                _selectionProvider.select((s) => s.count),
+              );
+              return AlbumSelectionHeader(
+                selectedCount: count,
+                itemCount: items.length,
+                onSelectAllToggle: () => count == items.length
+                    ? _selection.clearSelection()
+                    : _selection.selectAll([for (final i in items) i.id]),
+                onClose: _selection.exit,
+              );
+            },
           )
         : CollapsingSliverAppBar(
             title: 'Recently deleted',
-            leading: const BackButton(),
+            leading: const AppBackButton(),
             actions: [
               if (items.isNotEmpty)
                 IconButton(
                   tooltip: 'Select',
-                  icon: const Icon(Icons.check_box_outlined),
-                  onPressed: _start,
+                  icon: const Icon(LucideIcons.squareCheck),
+                  onPressed: _selection.start,
                 ),
             ],
           );
 
-    return PopScope(
-      // Back while selecting = leave select mode, not the screen.
-      canPop: !_selecting,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) _exit();
-      },
-      child: Scaffold(
-        bottomNavigationBar: _selecting
-            ? _TrashBar(
-                enabled: chosen.isNotEmpty,
-                onRestore: () => _restore(chosen),
-                onDelete: () => _deleteForever(chosen),
-              )
-            : null,
-        body: CustomScrollView(
-          slivers: [
-            header,
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                child: Text(
-                  'Deleted content is kept for $kTrashDays days before '
-                  'permanent deletion.',
-                  style: context.textTheme.bodySmall
-                      ?.copyWith(color: context.colors.textSecondary),
-                ),
-              ),
-            ),
-            if (trash.isLoading && items.isEmpty)
-              const SliverToBoxAdapter(child: SizedBox.shrink())
-            else if (trash.hasError && items.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(
-                  child: TextButton(
-                    onPressed: () => ref.invalidate(trashedItemsProvider),
-                    child: const Text('Could not load. Try again'),
-                  ),
-                ),
-              )
-            else if (items.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        LucideIcons.trash2,
-                        size: 40,
-                        color: context.colors.textSecondary,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No recently deleted items',
-                        style: context.textTheme.bodyLarge?.copyWith(
-                          color: context.colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              SliverGrid.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: _columns,
-                  mainAxisSpacing: _gap,
-                  crossAxisSpacing: _gap,
-                ),
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  final t = items[index];
-                  return TrashedTile(
-                    key: ValueKey(t.id),
-                    trashed: t,
-                    now: now,
-                    thumbnailSize: thumb,
-                    selecting: _selecting,
-                    selected: _selected.contains(t.id),
-                    // A tap opens select mode with this item (there is no
-                    // viewer for the trash yet); in select mode it toggles.
-                    onTap: () => _selecting ? _toggle(t.id) : _start(t.id),
-                    onLongPress: () => _selecting ? _toggle(t.id) : _start(t.id),
-                  );
-                },
-              ),
-            SliverToBoxAdapter(
-              child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Bottom bar of the select mode: Restore and Delete.
-class _TrashBar extends StatelessWidget {
-  const _TrashBar({
-    required this.enabled,
-    required this.onRestore,
-    required this.onDelete,
-  });
-
-  final bool enabled;
-  final VoidCallback onRestore;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: context.colorScheme.surface,
-      elevation: 3,
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _BarButton(
-                icon: LucideIcons.rotateCcw,
-                label: 'Restore',
-                onPressed: enabled ? onRestore : null,
-                color: enabled ? context.colorScheme.onSurface : Theme.of(context).disabledColor,
-              ),
-              _BarButton(
-                icon: LucideIcons.trash2,
-                label: 'Delete',
-                color: enabled ? context.colorScheme.error : Theme.of(context).disabledColor,
-                onPressed: enabled ? onDelete : null,
-              ),
-            ],
+    final banner = SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+        child: Text(
+          'Deleted content is kept for $kTrashDays days before permanent '
+          'deletion.',
+          style: context.textTheme.bodySmall?.copyWith(
+            color: context.colors.textSecondary,
           ),
         ),
       ),
     );
+
+    return MediaScope(
+      id: MediaScope.trash,
+      mediaContext: MediaContext.trash,
+      items: trashMediaItemsProvider,
+      thumbnailLoader: loadThumbnail,
+      tileLabel: (item) => trashDaysLabel(trashDaysLeft(expiry[item.id], now)),
+      videoSource: (item) => repository.playableVideoUri(item.id),
+      child: PopScope(
+        // Back while selecting = leave select mode, not the screen.
+        canPop: !selecting,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) _selection.exit();
+        },
+        child: Scaffold(
+          bottomNavigationBar: selecting ? const SelectionActionBar() : null,
+          body: items.isEmpty
+              ? CustomScrollView(
+                  slivers: [
+                    header,
+                    banner,
+                    if (trash.isLoading)
+                      SliverGalleryGridSkeleton(columns: settings.columns)
+                    else
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: trash.hasError
+                            ? Center(
+                                child: TextButton(
+                                  onPressed: () =>
+                                      ref.invalidate(trashedItemsProvider),
+                                  child: const Text(
+                                    'Could not load. Try again',
+                                  ),
+                                ),
+                              )
+                            : const _EmptyTrash(),
+                      ),
+                  ],
+                )
+              : GalleryGrid(
+                  controller: _scroll,
+                  rows: ref.watch(trashGalleryRowsProvider),
+                  items: items,
+                  columns: settings.columns,
+                  reversed: false,
+                  viewerItems: trashMediaItemsProvider,
+                  thumbTopInset:
+                      MediaQuery.paddingOf(context).top + kToolbarHeight + 8,
+                  leadingSlivers: [header, banner],
+                  onZoomIn: zoom.zoomIn,
+                  onZoomOut: zoom.zoomOut,
+                ),
+        ),
+      ),
+    );
   }
 }
 
-class _BarButton extends StatelessWidget {
-  const _BarButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback? onPressed;
+class _EmptyTrash extends StatelessWidget {
+  const _EmptyTrash();
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 22, color: color),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: context.textTheme.labelSmall?.copyWith(color: color),
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            LucideIcons.trash2,
+            size: 40,
+            color: context.colors.textSecondary,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No recently deleted items',
+            style: context.textTheme.bodyLarge?.copyWith(
+              color: context.colors.textSecondary,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

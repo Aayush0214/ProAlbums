@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/error/failures.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/permissions/domain/entities/media_permission_status.dart';
@@ -36,7 +37,7 @@ class _PermissionPageState extends ConsumerState<PermissionPage> {
         child: permission.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stackTrace) => _PermissionContent(
-            icon: Icons.error_outline,
+            icon: LucideIcons.circleAlert,
             title: 'Something went wrong',
             message: error is Failure ? error.message : 'Please try again.',
             primaryLabel: 'Try again',
@@ -44,13 +45,13 @@ class _PermissionPageState extends ConsumerState<PermissionPage> {
           ),
           data: (status) => switch (status) {
             MediaPermissionStatus.restricted => const _PermissionContent(
-                icon: Icons.lock_outline,
+                icon: LucideIcons.lock,
                 title: 'Access is restricted',
                 message: 'Photo access is blocked on this device, for example '
                     'by parental controls.',
               ),
             MediaPermissionStatus.denied when _askedOnce => _PermissionContent(
-                icon: Icons.photo_library_outlined,
+                icon: LucideIcons.images,
                 title: 'Permission needed',
                 message: 'Photo access is turned off. Open Settings and allow '
                     'access to photos and videos.',
@@ -62,7 +63,7 @@ class _PermissionPageState extends ConsumerState<PermissionPage> {
             // notDetermined / first denied check. (granted and limited never
             // stay here, the router redirects them to Photos.)
             _ => _PermissionContent(
-                icon: Icons.photo_library_outlined,
+                icon: LucideIcons.images,
                 title: 'Allow access to your photos',
                 message: 'ProAlbums needs access to show and organize the '
                     'photos and videos on this device.',

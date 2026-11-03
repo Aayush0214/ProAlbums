@@ -8,6 +8,7 @@ import 'package:proalbums/features/storage/domain/services/format_bytes.dart';
 import 'package:proalbums/features/storage/presentation/providers/storage_providers.dart';
 import 'package:proalbums/features/storage/presentation/widgets/storage_donut.dart';
 import 'package:proalbums/features/storage/presentation/widgets/storage_style.dart';
+import 'package:proalbums/shared/widgets/app_back_button.dart';
 import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
 
 /// "Storage analysis": the ring on top, then a card (2 columns) for each kind
@@ -26,7 +27,7 @@ class StorageAnalysisPage extends ConsumerWidget {
         slivers: [
           const CollapsingSliverAppBar(
             title: 'Storage analysis',
-            leading: BackButton(),
+            leading: AppBackButton(),
           ),
           if (usage == null || usage.total <= 0)
             const SliverFillRemaining(

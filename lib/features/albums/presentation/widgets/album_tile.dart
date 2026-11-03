@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/albums/domain/entities/album.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/media_thumbnail.dart';
+import 'package:proalbums/shared/widgets/shimmer_skeleton.dart';
 
 /// One album of the Albums tab: a rounded picture, the name, the count.
 class AlbumTile extends StatelessWidget {
@@ -62,36 +63,22 @@ class AlbumTile extends StatelessWidget {
   }
 }
 
-/// Grey boxes in the shape of the album tiles, shown while the albums load
-/// (instead of a spinner).
+/// Shimmering boxes in the shape of an album tile (picture + name), shown
+/// while the albums load (instead of a spinner).
 class AlbumTileSkeleton extends StatelessWidget {
   const AlbumTileSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final color = context.colorScheme.surfaceContainerHigh;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AspectRatio(
-          aspectRatio: 1,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
+    return ShimmerSkeleton(
+      layout: (size) => [
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, 0, size.width, size.width),
+          const Radius.circular(16),
         ),
-        const SizedBox(height: 8),
-        FractionallySizedBox(
-          widthFactor: 0.6,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const SizedBox(height: 12),
-          ),
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(0, size.width + 8, size.width * 0.6, 12),
+          const Radius.circular(4),
         ),
       ],
     );

@@ -95,12 +95,19 @@ final class MethodChannelAlbumFolderRepository implements AlbumFolderRepository 
     List<MediaItem> items,
     TransferTarget target, {
     required bool move,
+    TransferProgress? onProgress,
   }) async {
     if (items.isEmpty) {
       return right<Failure, TransferResult>(
         const TransferResult(cancelled: false),
       );
     }
+    // FolderChannel.kt calls back "transferProgress" while it works.
+    _channel.setMethodCallHandler((call) async {
+      if (call.method != 'transferProgress' || onProgress == null) return;
+      final args = call.arguments as Map<Object?, Object?>;
+      onProgress(args['done']! as int, args['total']! as int);
+    });
     try {
       final answer = await _channel.invokeMapMethod<String, Object?>('transfer', {
         'ids': [for (final item in items) item.id],
@@ -125,6 +132,8 @@ final class MethodChannelAlbumFolderRepository implements AlbumFolderRepository 
       return left<Failure, TransferResult>(
         MediaFailure('Could not ${move ? 'move' : 'copy'} the selected items.'),
       );
+    } finally {
+      _channel.setMethodCallHandler(null);
     }
   }
 }

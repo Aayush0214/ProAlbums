@@ -41,8 +41,13 @@ class FolderChannel(private val activity: Activity) :
     private var pendingPath: String? = null
     private var pendingResult: MethodChannel.Result? = null
 
+    /** Also used to send transfer progress back to Dart. */
+    private var channel: MethodChannel? = null
+
     fun register(messenger: BinaryMessenger) {
-        MethodChannel(messenger, CHANNEL).setMethodCallHandler(this)
+        channel = MethodChannel(messenger, CHANNEL).also {
+            it.setMethodCallHandler(this)
+        }
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -283,6 +288,9 @@ class FolderChannel(private val activity: Activity) :
         worker.execute {
             var done = 0
             var failed = 0
+            var lastSent = 0L
+            val total = items.size
+            sendProgress(0, total)
             for (item in items) {
                 val ok = try {
                     if (move) moveOne(item, path) else copyOne(item, path)
@@ -290,12 +298,29 @@ class FolderChannel(private val activity: Activity) :
                     false
                 }
                 if (ok) done++ else failed++
+                // "12 of 32" for the dialog. At most ~30 updates a second, so
+                // thousands of files do not flood the UI thread.
+                val now = System.currentTimeMillis()
+                val processed = done + failed
+                if (processed == total || now - lastSent >= PROGRESS_EVERY_MS) {
+                    lastSent = now
+                    sendProgress(processed, total)
+                }
             }
             main.post {
                 result.success(
                     mapOf("status" to "done", "done" to done, "failed" to failed),
                 )
             }
+        }
+    }
+
+    private fun sendProgress(processed: Int, total: Int) {
+        main.post {
+            channel?.invokeMethod(
+                "transferProgress",
+                mapOf("done" to processed, "total" to total),
+            )
         }
     }
 
@@ -400,6 +425,7 @@ class FolderChannel(private val activity: Activity) :
     private companion object {
         const val CHANNEL = "com.aayush.proalbums/folders"
         const val REQUEST_WRITE = 7103
+        const val PROGRESS_EVERY_MS = 33L
         const val KEY_CREATED = "created"
     }
 }

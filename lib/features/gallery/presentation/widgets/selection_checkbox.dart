@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
 
 /// The rounded-square checkbox used on photos, date headers and the app bar.
 /// [SelectionState.partial] shows a "minus" (some photos of the day).
@@ -41,8 +42,8 @@ class SelectionCheckbox extends StatelessWidget {
       child: filled
           ? Icon(
               state == SelectionState.partial
-                  ? Icons.remove_rounded
-                  : Icons.check_rounded,
+                  ? LucideIcons.minus
+                  : LucideIcons.check,
               size: size * 0.75,
               color: scheme.onPrimary,
             )

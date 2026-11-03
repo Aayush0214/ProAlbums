@@ -13,6 +13,7 @@ import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/grid/thumbnail_size.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/media_thumbnail.dart';
 import 'package:proalbums/shared/widgets/app_snack_bar.dart';
+import 'package:proalbums/shared/widgets/shimmer_skeleton.dart';
 
 /// "Move/Copy": where the selected pictures / videos should go. The first
 /// row makes a new album; the others are the albums that are real folders.
@@ -218,40 +219,29 @@ class _PlaceholderBox extends StatelessWidget {
   }
 }
 
-/// Grey rows in the shape of the list while the albums load.
+/// Shimmering rows in the shape of the list while the albums load.
 class _DestinationsSkeleton extends StatelessWidget {
   const _DestinationsSkeleton({required this.size});
 
+  /// The picture's side (same as a real row).
   final double size;
 
   @override
   Widget build(BuildContext context) {
-    final color = context.colorScheme.surfaceContainerHigh;
-    return Column(
-      children: [
-        for (var i = 0; i < 6; i++)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: SizedBox.square(dimension: size),
-                ),
-                const SizedBox(width: 16),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const SizedBox(width: 120, height: 14),
-                ),
-              ],
-            ),
+    // A row: 8 + picture + 8, starting below the list's 4 px top padding.
+    final rowHeight = size + 16;
+    return ShimmerSkeleton(
+      layout: (box) => [
+        for (var y = 4.0; y < box.height; y += rowHeight) ...[
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(16, y + 8, size, size),
+            const Radius.circular(12),
           ),
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(16 + size + 16, y + 8 + (size - 14) / 2, 120, 14),
+            const Radius.circular(4),
+          ),
+        ],
       ],
     );
   }

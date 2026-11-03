@@ -1,5 +1,8 @@
-import 'dart:typed_data';
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
+import 'package:proalbums/features/gallery/domain/entities/photos_view_settings.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_row.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_rows_builder.dart';
 import 'package:proalbums/features/gallery/presentation/providers/library_reload.dart';
 import 'package:proalbums/features/trash/data/repositories/method_channel_trash_repository.dart';
 import 'package:proalbums/features/trash/domain/entities/trashed_item.dart';
@@ -45,14 +48,45 @@ Future<List<TrashedItem>> trashedItems(Ref ref) async {
   return result.fold((failure) => throw failure, (items) => items);
 }
 
-/// The small picture of one item in the trash.
+
+/// The trash as plain pictures, in its order: what the shared grid shows and
+/// the selection looks ids up in.
 @riverpod
-Future<Uint8List?> trashThumbnail(
-  Ref ref,
-  String id,
-  bool isVideo,
-  int size,
-) =>
-    ref
-        .watch(trashRepositoryProvider)
-        .thumbnail(id: id, isVideo: isVideo, size: size);
+List<MediaItem> trashMediaItems(Ref ref) => [
+  for (final trashed in ref.watch(trashedItemsProvider).value ?? const <TrashedItem>[])
+    trashed.item,
+];
+
+/// When each picture leaves the trash for good, by id (for the "29 days"
+/// label on the tiles).
+@riverpod
+Map<String, DateTime?> trashExpiryById(Ref ref) => {
+  for (final trashed in ref.watch(trashedItemsProvider).value ?? const <TrashedItem>[])
+    trashed.id: trashed.expiresAt,
+};
+
+/// Zoom of the Recently deleted grid: the same steps and rules as every
+/// grid, its own value. Kept while the app runs.
+@Riverpod(keepAlive: true)
+class TrashViewSettings extends _$TrashViewSettings {
+  @override
+  PhotosViewSettings build() => const PhotosViewSettings();
+
+  void zoomIn() {
+    if (state.canZoomIn) state = state.copyWith(columns: state.columnsZoomedIn);
+  }
+
+  void zoomOut() {
+    if (state.canZoomOut) {
+      state = state.copyWith(columns: state.columnsZoomedOut);
+    }
+  }
+}
+
+/// The trash cut into grid rows (one flat grid, no date headers).
+@riverpod
+List<GalleryRow> trashGalleryRows(Ref ref) => GalleryRowsBuilder.buildFlat(
+  items: ref.watch(trashMediaItemsProvider),
+  columns: ref.watch(trashViewSettingsProvider.select((s) => s.columns)),
+  alignToEnd: false,
+);

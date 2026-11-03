@@ -1,51 +1,67 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
+import 'package:proalbums/features/albums/presentation/providers/album_rows_provider.dart';
 import 'package:proalbums/features/albums/presentation/providers/albums_providers.dart';
-import 'package:proalbums/features/gallery/presentation/widgets/media_thumbnail.dart';
+import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_grid.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_grid_skeleton.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
 
-/// "Change cover": the pictures of ONE album; tapping one chooses it.
-/// Returns the chosen picture's id (null = back).
-class ChangeCoverPage extends ConsumerWidget {
+/// "Change cover": the pictures of ONE album on the shared grid (zoom, fast
+/// scroll...); tapping one chooses it. Returns the chosen picture's id
+/// (null = back).
+class ChangeCoverPage extends ConsumerStatefulWidget {
   const ChangeCoverPage({required this.albumId, super.key});
 
   final String albumId;
 
-  static const double _gap = 1;
-  static const int _columns = 4;
+  @override
+  ConsumerState<ChangeCoverPage> createState() => _ChangeCoverPageState();
+}
+
+class _ChangeCoverPageState extends ConsumerState<ChangeCoverPage> {
+  final ScrollController _scroll = ScrollController();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(albumItemsProvider(albumId)).value ?? const [];
-    final width = MediaQuery.sizeOf(context).width;
-    final dpr = MediaQuery.devicePixelRatioOf(context);
-    final cell = (width - _gap * (_columns - 1)) / _columns;
-    final thumb = math.max(128, (cell * dpr / 64).ceil() * 64);
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Choose cover', style: context.textTheme.titleLarge),
-        centerTitle: true,
-      ),
-      body: GridView.builder(
-        padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: _columns,
-          mainAxisSpacing: _gap,
-          crossAxisSpacing: _gap,
+  @override
+  Widget build(BuildContext context) {
+    final albumId = widget.albumId;
+    final items = ref.watch(albumDisplayItemsProvider(albumId));
+    final settings = ref.watch(albumViewSettingsProvider);
+    final zoom = ref.read(albumViewSettingsProvider.notifier);
+
+    return MediaScope(
+      id: MediaScope.picker('cover:$albumId'),
+      mediaContext: MediaContext.album,
+      items: albumDisplayItemsProvider(albumId),
+      albumId: albumId,
+      pickMode: PickMode.single,
+      onPick: (item) => context.pop(item.id),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Choose cover', style: context.textTheme.titleLarge),
+          centerTitle: true,
         ),
-        itemCount: items.length,
-        itemBuilder: (context, index) {
-          final item = items[index];
-          return GestureDetector(
-            key: ValueKey(item.id),
-            onTap: () => context.pop(item.id),
-            child: MediaThumbnail(item: item, size: thumb),
-          );
-        },
+        body: items.isEmpty && ref.watch(albumItemsProvider(albumId)).isLoading
+            ? GalleryGridSkeleton(columns: settings.columns)
+            : items.isEmpty
+            ? const SizedBox.shrink()
+            : GalleryGrid(
+                controller: _scroll,
+                rows: ref.watch(albumGalleryRowsProvider(albumId)),
+                items: items,
+                columns: settings.columns,
+                reversed: false,
+                onZoomIn: zoom.zoomIn,
+                onZoomOut: zoom.zoomOut,
+              ),
       ),
     );
   }

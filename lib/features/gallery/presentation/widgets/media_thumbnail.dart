@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/core/theme/app_typography.dart';
 import 'package:proalbums/core/utils/duration_format.dart';
@@ -53,6 +54,7 @@ class MediaThumbnailView extends StatelessWidget {
     this.size = 256,
     this.compactBadge = false,
     this.badgeInset = 0,
+    this.showVideoBadge = true,
     super.key,
   });
 
@@ -71,6 +73,9 @@ class MediaThumbnailView extends StatelessWidget {
   /// Pushes the video badge to the right, to make room for the favourite
   /// heart that sits in the same corner (like the system gallery).
   final double badgeInset;
+
+  /// false when the tile shows its own label in that corner.
+  final bool showVideoBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +114,7 @@ class MediaThumbnailView extends StatelessWidget {
             errorBuilder: (context, error, stackTrace) =>
                 const SizedBox.shrink(),
           ),
-          if (item.isVideo)
+          if (item.isVideo && showVideoBadge)
             Positioned(
               left: (compactBadge ? 3 : 6) + badgeInset,
               bottom: compactBadge ? 3 : 6,
@@ -141,7 +146,7 @@ class _VideoBadge extends StatelessWidget {
             : const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         child: compact
             ? const Icon(
-                Icons.videocam_rounded,
+                LucideIcons.video,
                 size: 11,
                 color: AppColors.mediaBadgeText,
               )
@@ -149,7 +154,7 @@ class _VideoBadge extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(
-                    Icons.play_arrow_rounded,
+                    LucideIcons.play,
                     size: 12,
                     color: AppColors.mediaBadgeText,
                   ),

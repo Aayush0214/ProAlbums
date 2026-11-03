@@ -42,7 +42,8 @@ class AlbumMediaTile extends ConsumerWidget {
               left: compact ? 3 : 6,
               bottom: compact ? 3 : 6,
               child: Icon(
-                Icons.favorite_rounded,
+                // Filled (Lucide has no filled icons).
+                Icons.favorite,
                 size: compact ? 10 : 18,
                 color: AppColors.mediaBadgeText,
                 shadows: const [

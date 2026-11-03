@@ -1,0 +1,81 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:proalbums/app/router/app_routes.dart';
+import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
+import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
+import 'package:proalbums/features/gallery/presentation/providers/share_providers.dart';
+import 'package:proalbums/features/trash/presentation/widgets/delete_flow.dart';
+import 'package:proalbums/features/trash/presentation/widgets/trash_actions.dart';
+import 'package:proalbums/shared/widgets/app_snack_bar.dart';
+
+/// Runs [action] on [items] — from the selection bar OR the viewer. This is
+/// the ONE place each action is wired, so building an action here makes it
+/// work on every screen that offers it.
+///
+/// Returns true when it was done (the selection bar then leaves selection
+/// mode); false when cancelled, failed, or nothing to leave (Share).
+///
+/// [albumId]: the album the items are shown in (Move/Copy does not offer it).
+Future<bool> runMediaAction(
+  BuildContext context,
+  WidgetRef ref,
+  MediaAction action,
+  List<MediaItem> items, {
+  String? albumId,
+}) async {
+  if (items.isEmpty) return false;
+  switch (action) {
+    case MediaAction.share:
+      final messenger = ScaffoldMessenger.of(context);
+      final width = MediaQuery.sizeOf(context).width;
+      final result = await ref.read(shareMediaUseCaseProvider)([
+        for (final item in items) item.id,
+      ]);
+      result.match(
+        (failure) => showAppSnackBarOn(
+          messenger,
+          width,
+          'Could not share the selected items.',
+        ),
+        (_) {},
+      );
+      // Like the system gallery: the selection stays after sharing.
+      return false;
+
+    case MediaAction.moveCopy:
+      // The albums feature, reached only by its route.
+      final done = await context.push<bool>(
+        AppRoutes.moveCopy(fromAlbumId: albumId),
+        extra: items,
+      );
+      return done ?? false;
+
+    case MediaAction.delete:
+      return deleteMediaItems(context, ref, items);
+
+    case MediaAction.restore:
+      return restoreMediaItems(context, ref, items);
+
+    case MediaAction.deleteForever:
+      return deleteForeverMediaItems(context, ref, items);
+
+    case MediaAction.create ||
+          MediaAction.hide ||
+          MediaAction.copyToClipboard ||
+          MediaAction.pdfPpt ||
+          MediaAction.print ||
+          MediaAction.setAsWallpaper ||
+          MediaAction.googleLens ||
+          MediaAction.rename ||
+          MediaAction.compressSize ||
+          MediaAction.slideshow ||
+          MediaAction.contactPicture ||
+          MediaAction.rotate ||
+          MediaAction.screenMirroring ||
+          MediaAction.convertToH264:
+      // Each one is switched on by the phase that builds it.
+      showComingSoon(context, action.label);
+      return false;
+  }
+}

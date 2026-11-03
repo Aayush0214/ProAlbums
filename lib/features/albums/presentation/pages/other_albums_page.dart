@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/features/albums/domain/entities/album.dart';
 import 'package:proalbums/features/albums/presentation/providers/album_selection_controller.dart';
 import 'package:proalbums/features/albums/presentation/providers/albums_providers.dart';
@@ -10,6 +11,7 @@ import 'package:proalbums/features/albums/presentation/widgets/album_select_bar.
 import 'package:proalbums/features/albums/presentation/widgets/album_selection_widgets.dart';
 import 'package:proalbums/features/albums/presentation/widgets/album_tile.dart';
 import 'package:proalbums/features/albums/presentation/widgets/open_album.dart';
+import 'package:proalbums/shared/widgets/app_back_button.dart';
 import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
 
 /// The albums behind the "Other albums" tile. Tap opens an album; the check
@@ -57,11 +59,11 @@ subtitle: selected.isEmpty
           )
         : CollapsingSliverAppBar(
             title: 'Other albums',
-            leading: const BackButton(),
+            leading: const AppBackButton(),
             actions: [
               IconButton(
                 tooltip: 'Select',
-                icon: const Icon(Icons.check_box_outlined),
+                icon: const Icon(LucideIcons.squareCheck),
                 onPressed: controller.start,
               ),
             ],

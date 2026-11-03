@@ -14,6 +14,7 @@ final class TransferToAlbumUseCase {
     List<MediaItem> items,
     TransferTarget target, {
     required bool move,
+    TransferProgress? onProgress,
   }) =>
-      _repository.transfer(items, target, move: move);
+      _repository.transfer(items, target, move: move, onProgress: onProgress);
 }

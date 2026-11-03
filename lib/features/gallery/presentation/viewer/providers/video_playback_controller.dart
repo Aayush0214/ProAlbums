@@ -6,6 +6,7 @@ import 'package:proalbums/core/logging/app_logger.dart';
 import 'package:proalbums/core/platform/screen_awake.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_providers.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:video_player/video_player.dart';
 
@@ -146,10 +147,18 @@ class VideoPlayback extends _$VideoPlayback {
     );
 
     final clock = Stopwatch()..start();
-    final result = await ref.read(resolveVideoSourceUseCaseProvider)(item.id);
-    if (!ref.mounted || generation != _generation) return;
+    // The screen the viewer came from may know where its videos are (the
+    // trash); otherwise the normal lookup.
+    final own = ref.read(viewerSessionProvider).videoSource;
+    final String? path;
+    if (own != null) {
+      path = own(item);
+    } else {
+      final result = await ref.read(resolveVideoSourceUseCaseProvider)(item.id);
+      if (!ref.mounted || generation != _generation) return;
+      path = result.fold((failure) => null, (path) => path);
+    }
     final resolvedMs = clock.elapsedMilliseconds;
-    final path = result.fold((failure) => null, (path) => path);
     if (path == null) {
       _fail(item.id);
       return;

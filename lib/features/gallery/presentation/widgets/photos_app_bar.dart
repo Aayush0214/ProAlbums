@@ -9,7 +9,7 @@ import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/gallery/domain/entities/photos_view_settings.dart';
 import 'package:proalbums/features/gallery/presentation/providers/gallery_rows_provider.dart';
-import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
 import 'package:proalbums/features/gallery/presentation/providers/photos_view_settings_controller.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/browsing_order_sheet.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selection_checkbox.dart';
@@ -48,7 +48,7 @@ class PhotosAppBar extends ConsumerWidget implements PreferredSizeWidget {
     // Over photos the bar must be white, whatever the theme is.
     final foreground = immersive ? Colors.white : null;
 
-    final selection = ref.watch(photosSelectionControllerProvider);
+    final selection = ref.watch(mediaSelectionOf(context));
     if (selection.active) {
       return _selectionBar(context, ref, selection, foreground);
     }
@@ -75,13 +75,13 @@ class PhotosAppBar extends ConsumerWidget implements PreferredSizeWidget {
         IconButton(
           tooltip: 'Select',
           color: foreground,
-          icon: const Icon(Icons.check_box_outlined),
-          onPressed: ref.read(photosSelectionControllerProvider.notifier).start,
+          icon: const Icon(LucideIcons.squareCheck),
+          onPressed: ref.read(mediaSelectionOf(context).notifier).start,
         ),
         PopupMenuButton<_PhotosMenuAction>(
           tooltip: 'More',
           iconColor: foreground,
-          icon: const Icon(Icons.more_vert),
+          icon: const Icon(LucideIcons.ellipsisVertical),
           itemBuilder: (context) => _menuItems(settings),
           onSelected: (action) => _onSelected(context, current: settings, controller: controller, action: action),
         ),
@@ -93,10 +93,10 @@ class PhotosAppBar extends ConsumerWidget implements PreferredSizeWidget {
   AppBar _selectionBar(
     BuildContext context,
     WidgetRef ref,
-    PhotosSelection selection,
+    MediaSelection selection,
     Color? foreground,
   ) {
-    final controller = ref.read(photosSelectionControllerProvider.notifier);
+    final controller = ref.read(mediaSelectionOf(context).notifier);
     final ids = ref.watch(
       photosDisplayItemsProvider.select((items) => [for (final i in items) i.id]),
     );
@@ -124,7 +124,7 @@ class PhotosAppBar extends ConsumerWidget implements PreferredSizeWidget {
         IconButton(
           tooltip: 'Cancel',
           color: foreground,
-          icon: const Icon(Icons.close),
+          icon: const Icon(LucideIcons.x),
           onPressed: controller.exit,
         ),
         const SizedBox(width: 4),

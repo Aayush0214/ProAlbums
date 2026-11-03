@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/video_playback_controller.dart';
@@ -80,7 +81,7 @@ class ViewerVideoItem extends ConsumerWidget {
                   child: const Padding(
                     padding: EdgeInsets.all(16),
                     child: Icon(
-                      Icons.play_arrow_rounded,
+                      LucideIcons.play,
                       size: 48,
                       color: AppColors.mediaBadgeText,
                     ),

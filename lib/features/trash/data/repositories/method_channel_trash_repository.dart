@@ -137,4 +137,10 @@ final class MethodChannelTrashRepository implements TrashRepository {
       return null;
     }
   }
+
+  @override
+  String playableVideoUri(String id) =>
+      // Same MediaStore address as any video, asked to include the trash
+      // (TrashChannel.kt reads thumbnails the same way).
+      'content://media/external/video/media/$id?includeTrashed=1';
 }

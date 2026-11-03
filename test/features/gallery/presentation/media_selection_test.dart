@@ -1,14 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
 
 void main() {
   groupSelectionTests();
 
   late ProviderContainer container;
-  PhotosSelection state() => container.read(photosSelectionControllerProvider);
-  PhotosSelectionController notifier() =>
-      container.read(photosSelectionControllerProvider.notifier);
+  MediaSelection state() =>
+      container.read(mediaSelectionControllerProvider(MediaScope.photos));
+  MediaSelectionController notifier() => container.read(
+    mediaSelectionControllerProvider(MediaScope.photos).notifier,
+  );
 
   setUp(() {
     container = ProviderContainer();
@@ -67,14 +69,31 @@ void main() {
     notifier().exit();
     expect(state().active, isFalse);
   });
+
+  test('every screen has its own selection', () {
+    final album = mediaSelectionControllerProvider(MediaScope.album('7'));
+    final sub = container.listen(album, (_, _) {});
+    addTearDown(sub.close);
+
+    notifier().startWith('1'); // Photos tab
+    container.read(album.notifier).startWith('2'); // inside album 7
+
+    expect(state().ids, {'1'});
+    expect(container.read(album).ids, {'2'});
+
+    container.read(album.notifier).exit();
+    expect(state().active, isTrue, reason: 'Photos keeps its selection');
+  });
 }
 
 void groupSelectionTests() {
   group('selecting a whole day', () {
     late ProviderContainer container;
-    PhotosSelection state() => container.read(photosSelectionControllerProvider);
-    PhotosSelectionController notifier() =>
-        container.read(photosSelectionControllerProvider.notifier);
+    MediaSelection state() =>
+        container.read(mediaSelectionControllerProvider(MediaScope.photos));
+    MediaSelectionController notifier() => container.read(
+      mediaSelectionControllerProvider(MediaScope.photos).notifier,
+    );
     const day = ['a', 'b', 'c'];
 
     setUp(() {
@@ -90,15 +109,18 @@ void groupSelectionTests() {
       expect(state().stateOf(day), SelectionState.all);
     });
 
-    test('a half selected day shows partial, and the next tap completes it', () {
-      notifier()
-        ..startWith('a')
-        ..toggle('b');
-      expect(state().stateOf(day), SelectionState.partial);
+    test(
+      'a half selected day shows partial, and the next tap completes it',
+      () {
+        notifier()
+          ..startWith('a')
+          ..toggle('b');
+        expect(state().stateOf(day), SelectionState.partial);
 
-      notifier().toggleGroup(day);
-      expect(state().stateOf(day), SelectionState.all);
-    });
+        notifier().toggleGroup(day);
+        expect(state().stateOf(day), SelectionState.all);
+      },
+    );
 
     test('tapping a fully selected day unselects only that day', () {
       notifier()

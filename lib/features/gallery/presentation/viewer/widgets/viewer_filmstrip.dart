@@ -11,6 +11,7 @@ import 'package:proalbums/features/gallery/presentation/providers/media_provider
 import 'package:proalbums/features/gallery/presentation/viewer/filmstrip_layout.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/video_playback_controller.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_providers.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/video_math.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_math.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_video_frames.dart';
@@ -46,8 +47,10 @@ class _ViewerFilmstripState extends ConsumerState<ViewerFilmstrip>
 
   // Start the background frames only after the video is running smoothly.
   // `--dart-define=VIDEO_PRELOAD=false` turns the preloading off, to compare.
-  static const bool _preloadEnabled =
-      bool.fromEnvironment('VIDEO_PRELOAD', defaultValue: true);
+  static const bool _preloadEnabled = bool.fromEnvironment(
+    'VIDEO_PRELOAD',
+    defaultValue: true,
+  );
   static const Duration _preloadDelay = Duration(milliseconds: 2000);
 
   late final ScrollController _controller;
@@ -84,7 +87,8 @@ class _ViewerFilmstripState extends ConsumerState<ViewerFilmstrip>
     final index = widget.currentIndex;
     if (count == 0 || index >= count) return FilmstripLayout(itemCount: count);
     final current = widget.items[index];
-    final open = current.isVideo &&
+    final open =
+        current.isVideo &&
         playback.activeId == current.id &&
         playback.status == VideoStatus.ready &&
         playback.started &&
@@ -100,7 +104,9 @@ class _ViewerFilmstripState extends ConsumerState<ViewerFilmstrip>
   /// Where the strip should rest right now.
   double _targetOffset() {
     if (_layout.expanded) {
-      final position = ref.read(videoPlaybackProvider.notifier).estimatedPosition();
+      final position = ref
+          .read(videoPlaybackProvider.notifier)
+          .estimatedPosition();
       return _layout.offsetForVideoFraction(
         position.inMilliseconds / _videoDuration.inMilliseconds,
       );
@@ -165,11 +171,15 @@ class _ViewerFilmstripState extends ConsumerState<ViewerFilmstrip>
     final playback = ref.read(videoPlaybackProvider.notifier);
     final count = _layout.frameCount;
     final duration = _videoDuration;
-    final nowIndex = (ref.read(videoPlaybackProvider.notifier).estimatedPosition().inMilliseconds /
-            duration.inMilliseconds *
-            count)
-        .floor()
-        .clamp(0, count - 1);
+    final nowIndex =
+        (ref
+                    .read(videoPlaybackProvider.notifier)
+                    .estimatedPosition()
+                    .inMilliseconds /
+                duration.inMilliseconds *
+                count)
+            .floor()
+            .clamp(0, count - 1);
     final order = List<int>.generate(count, (i) => i)
       ..sort((a, b) => (a - nowIndex).abs().compareTo((b - nowIndex).abs()));
 
@@ -179,7 +189,11 @@ class _ViewerFilmstripState extends ConsumerState<ViewerFilmstrip>
       if (!mounted || token != _preloadToken) return;
       await ref.read(getVideoFrameUseCaseProvider)(
         id: id,
-        position: videoFrameTime(index: index, frameCount: count, duration: duration),
+        position: videoFrameTime(
+          index: index,
+          frameCount: count,
+          duration: duration,
+        ),
         size: VideoFrameTile.frameSize,
       );
       // A short rest between frames: the video's own decoding comes first.
@@ -229,15 +243,18 @@ class _ViewerFilmstripState extends ConsumerState<ViewerFilmstrip>
   }
 
   ImageProvider _thumbnailOf(MediaItem item) => MediaThumbnailImage(
-        id: item.id,
-        size: _thumbnailSize,
-        load: (id, size) async {
+    id: item.id,
+    size: _thumbnailSize,
+    // The screen's own loader (trash), else the normal one.
+    load:
+        ref.read(viewerSessionProvider).imageLoader ??
+        (id, size) async {
           final result = await ref.read(getMediaThumbnailUseCaseProvider)(
             ThumbnailRequest(id: id, size: size),
           );
           return result.fold((failure) => null, (bytes) => bytes);
         },
-      );
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -261,7 +278,9 @@ class _ViewerFilmstripState extends ConsumerState<ViewerFilmstrip>
     }
 
     final layout = _layout;
-    final current = widget.items.isEmpty ? null : widget.items[widget.currentIndex];
+    final current = widget.items.isEmpty
+        ? null
+        : widget.items[widget.currentIndex];
 
     return ColoredBox(
       color: context.colorScheme.surface,
@@ -349,7 +368,9 @@ class _ViewerFilmstripState extends ConsumerState<ViewerFilmstrip>
       child: Center(
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 140),
-          width: isCurrent && !expanded ? kFilmstripSlot - 2 : kFilmstripSlot - 6,
+          width: isCurrent && !expanded
+              ? kFilmstripSlot - 2
+              : kFilmstripSlot - 6,
           height: isCurrent && !expanded ? 56 : 42,
           decoration: BoxDecoration(
             border: isCurrent && !expanded

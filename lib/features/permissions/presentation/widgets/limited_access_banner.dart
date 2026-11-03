@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/features/permissions/presentation/providers/limited_access_banner_provider.dart';
 import 'package:proalbums/features/permissions/presentation/providers/media_permission_notifier.dart';
 
@@ -27,7 +28,7 @@ class LimitedAccessBanner extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(top: 2),
             child: Icon(
-              Icons.info_outline_rounded,
+              LucideIcons.info,
               size: 20,
               color: scheme.onSecondaryContainer,
             ),
@@ -67,7 +68,7 @@ class LimitedAccessBanner extends ConsumerWidget {
             tooltip: 'Close',
             visualDensity: VisualDensity.compact,
             color: scheme.onSecondaryContainer,
-            icon: const Icon(Icons.close, size: 20),
+            icon: const Icon(LucideIcons.x, size: 20),
             onPressed: ref.read(limitedBannerDismissedProvider.notifier).dismiss,
           ),
         ],

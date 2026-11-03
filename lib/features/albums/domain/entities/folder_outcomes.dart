@@ -16,3 +16,7 @@ final class TransferResult {
 
   bool get allDone => !cancelled && failed == 0;
 }
+
+/// Progress of a Copy / Move: [done] of [total] files handled (copied,
+/// moved or failed).
+typedef TransferProgress = void Function(int done, int total);

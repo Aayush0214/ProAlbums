@@ -4,7 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/albums/domain/entities/album.dart';
 import 'package:proalbums/features/albums/presentation/widgets/album_tile.dart';
-import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selection_checkbox.dart';
 
 /// An album tile in select mode: a checkbox in the corner, a tap selects.
@@ -282,7 +282,7 @@ class _MoreButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.more_vert, size: 22, color: color),
+            Icon(LucideIcons.ellipsisVertical, size: 22, color: color),
             const SizedBox(height: 4),
             Text(
               'More',

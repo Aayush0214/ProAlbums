@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/platform/app_orientation.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
@@ -34,8 +35,9 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
     with WidgetsBindingObserver {
   /// The list to swipe through (see ViewerSession / openMediaViewer). Taken
   /// once: it does not change while this viewer is open.
-  late final ProviderListenable<List<MediaItem>> _items =
-      ref.read(viewerSessionProvider);
+  late final ProviderListenable<List<MediaItem>> _items = ref
+      .read(viewerSessionProvider)
+      .items;
 
   ExtendedPageController? _pageController;
   int _index = 0;
@@ -51,7 +53,9 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
     WidgetsBinding.instance.addObserver(this);
     // Only the viewer may turn sideways (the rest of the app is portrait).
     AppOrientation.allowRotation();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleVideoPrepare());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _scheduleVideoPrepare(),
+    );
   }
 
   @override
@@ -108,7 +112,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
   /// neighbour by itself (see the "list changed" branch in build).
   Future<void> _delete(MediaItem item) async {
     unawaited(ref.read(videoPlaybackProvider.notifier).pause());
-    final landscape = MediaQuery.orientationOf(context) == Orientation.landscape;
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
     await deleteMediaItems(
       context,
@@ -184,14 +189,16 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
         ),
       ),
     );
-    final videoReady = current.isVideo &&
+    final videoReady =
+        current.isVideo &&
         playback.activeId == current.id &&
         playback.status == VideoStatus.ready &&
         playback.started;
     final videoPlaying = videoReady && playback.playing;
     void playPause() =>
         ref.read(videoPlaybackProvider.notifier).playOrToggle(current);
-    final landscape = MediaQuery.orientationOf(context) == Orientation.landscape;
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     if (landscape != _landscape) {
       _landscape = landscape;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -203,7 +210,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
     // gallery. The status bar icons follow it too.
     return Scaffold(
       body: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: Theme.of(context).appBarTheme.systemOverlayStyle ??
+        value:
+            Theme.of(context).appBarTheme.systemOverlayStyle ??
             (context.isDarkMode
                 ? SystemUiOverlayStyle.light
                 : SystemUiOverlayStyle.dark),
@@ -293,8 +301,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
                         padding: const EdgeInsets.all(12),
                         child: Icon(
                           videoPlaying
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
+                              ? LucideIcons.pause
+                              : LucideIcons.play,
                           size: 30,
                           color: AppColors.mediaBadgeText,
                         ),

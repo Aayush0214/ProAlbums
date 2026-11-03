@@ -8,6 +8,7 @@ import 'package:proalbums/features/gallery/domain/entities/thumbnail_request.dar
 import 'package:proalbums/features/gallery/presentation/images/media_thumbnail_image.dart';
 import 'package:proalbums/features/gallery/presentation/providers/media_providers.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_providers.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_math.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_video_item.dart';
 
@@ -82,8 +83,10 @@ class _ViewerPageItemState extends ConsumerState<ViewerPageItem>
 
     _zoomListener = listener;
     _zoomAnimation = _zoomController.drive(
-      Tween<double>(begin: begin, end: end)
-          .chain(CurveTween(curve: Curves.easeInOut)),
+      Tween<double>(
+        begin: begin,
+        end: end,
+      ).chain(CurveTween(curve: Curves.easeInOut)),
     )..addListener(listener);
     _zoomController.forward();
   }
@@ -96,25 +99,36 @@ class _ViewerPageItemState extends ConsumerState<ViewerPageItem>
       media.size.longestSide * media.devicePixelRatio,
     );
 
+    // The screen the viewer was opened from may bring its own loader
+    // (pictures in the trash cannot be read the normal way): then it gives
+    // both the small and the screen-size picture.
+    final ownLoader = ref.read(viewerSessionProvider).imageLoader;
+
     final thumbnail = MediaThumbnailImage(
       id: item.id,
       size: _placeholderSize,
-      load: (id, size) async {
-        final result = await ref.read(getMediaThumbnailUseCaseProvider)(
-          ThumbnailRequest(id: id, size: size),
-        );
-        return result.fold((failure) => null, (bytes) => bytes);
-      },
+      load:
+          ownLoader ??
+          (id, size) async {
+            final result = await ref.read(getMediaThumbnailUseCaseProvider)(
+              ThumbnailRequest(id: id, size: size),
+            );
+            return result.fold((failure) => null, (bytes) => bytes);
+          },
     );
 
     final picture = MediaThumbnailImage(
       id: item.id,
       size: longEdge,
-      load: (id, size) async {
-        final result = await ref
-            .read(loadDisplayImageUseCaseProvider)(id: id, maxLongEdge: size);
-        return result.fold((failure) => null, (bytes) => bytes);
-      },
+      load:
+          ownLoader ??
+          (id, size) async {
+            final result = await ref.read(loadDisplayImageUseCaseProvider)(
+              id: id,
+              maxLongEdge: size,
+            );
+            return result.fold((failure) => null, (bytes) => bytes);
+          },
     );
 
     if (item.isVideo) {

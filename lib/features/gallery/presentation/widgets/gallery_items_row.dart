@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:proalbums/features/favorites/presentation/providers/favorites_providers.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_geometry.dart';
-import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/open_media_viewer.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/media_thumbnail.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selectable_tile.dart';
@@ -48,9 +48,13 @@ class GalleryItemsRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scope = MediaScope.of(context);
+    // A "choose many" picker always shows its checkboxes.
+    final alwaysSelecting = scope.pickMode == PickMode.multi;
     final selection = ref.watch(
-      photosSelectionControllerProvider.select(
-        (s) => s.active ? rowMask(items, s.ids) : _notSelecting,
+      mediaSelectionControllerProvider(scope.id).select(
+        (s) =>
+            s.active || alwaysSelecting ? rowMask(items, s.ids) : _notSelecting,
       ),
     );
     final hearts = ref.watch(
@@ -59,9 +63,31 @@ class GalleryItemsRow extends ConsumerWidget {
         return set == null ? 0 : rowMask(items, set);
       }),
     );
-    final controller = ref.read(photosSelectionControllerProvider.notifier);
-    final load = thumbnailLoader(ref);
+    final controller = ref.read(
+      mediaSelectionControllerProvider(scope.id).notifier,
+    );
+    final load = scope.thumbnailLoader ?? thumbnailLoader(ref);
     final selecting = selection != _notSelecting;
+    final onOpen = scope.onOpen;
+
+    VoidCallback onTapOf(MediaItem item) => switch (scope.pickMode) {
+      // Choose ONE: tapping it is the choice.
+      PickMode.single => () => scope.onPick!(item),
+      // Choose many: select / unselect (startWith also turns the
+      // picker's selection on the first time).
+      PickMode.multi => () => controller.startWith(item.id),
+      PickMode.none =>
+        selecting
+            ? () => controller.toggle(item.id)
+            : onOpen != null
+            ? () => onOpen(item)
+            : () => openMediaViewer(
+                context,
+                ref,
+                id: item.id,
+                items: viewerItems,
+              ),
+    };
 
     return Padding(
       padding: const EdgeInsets.only(bottom: GalleryGeometry.gap),
@@ -80,18 +106,12 @@ class GalleryItemsRow extends ConsumerWidget {
                 mode: !selecting
                     ? TileMode.normal
                     : (selection & (1 << i)) != 0
-                        ? TileMode.selected
-                        : TileMode.unselected,
+                    ? TileMode.selected
+                    : TileMode.unselected,
                 isFavorite: (hearts & (1 << i)) != 0,
+                label: scope.tileLabel?.call(items[i]),
                 load: load,
-                onTap: selecting
-                    ? () => controller.toggle(items[i].id)
-                    : () => openMediaViewer(
-                          context,
-                          ref,
-                          id: items[i].id,
-                          items: viewerItems,
-                        ),
+                onTap: onTapOf(items[i]),
               ),
             ),
           ],

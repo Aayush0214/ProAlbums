@@ -17,6 +17,7 @@ Riverpod 3 + riverpod_generator (`dart run build_runner build -d`), go_router, f
 - Gallery never imports albums. Openers set `ViewerSession` then `context.push(AppRoutes.viewer(id))` (helper: `openMediaViewer`).
 - Routing: go_router `StatefulShellRoute.indexedStack`; full-screen routes use `parentNavigatorKey: rootNavigatorKey`; route strings only via `AppRoutes`.
 - Every widget/dialog/screen uses the app theme: `context.colors`, `context.colorScheme`, `context.textTheme`. No hard-coded colours/fonts.
+- Icons: ONLY `lucide_icons_flutter` (`LucideIcons.*`), never Material `Icons.*`. One exception: the FILLED favourite heart is `Icons.favorite` (Lucide has no filled icons) — red in the viewer, white on grid tiles; the empty heart stays `LucideIcons.heart`.
 
 ## Consistency rule (most important)
 ONE shared grid (`GalleryGrid` + `GalleryRow`s from `GalleryRowsBuilder`) and ONE viewer for every tab (Photos, Album detail, Search, For You, Trash). Same features everywhere: drag-select, fast-scroll thumb, sticky date header, pinch zoom, SelectableTile, same thumbnail size/cache key. Never build a second grid/viewer. New features go into the shared component first; tabs only supply data (rows) and their own app bar/header.
@@ -29,6 +30,7 @@ ONE shared grid (`GalleryGrid` + `GalleryRow`s from `GalleryRowsBuilder`) and ON
 
 ## Workflow
 - One feature/phase at a time, fully finished, then optimise, then Aayush commits.
+- ASK before doing anything new or not explicitly requested (new behaviour, UI choices, extra refactors). Propose, wait for a yes.
 - Run `dart run build_runner build -d`, `flutter analyze`, `flutter test` before saying "done". State what is unverified on device.
 - Tests next to the feature under `test/features/...`.
 - Do not touch user-owned files (`app.dart`, `main.dart`, theme files, `settings_screen.dart`) without saying so.

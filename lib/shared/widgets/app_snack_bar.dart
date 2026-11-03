@@ -66,3 +66,8 @@ void showAppSnackBarOn(
       ),
     );
 }
+
+/// For buttons whose phase is not built yet.
+void showComingSoon(BuildContext context, String what) {
+  showAppSnackBar(context, '$what is coming in a later update.');
+}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_details.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
@@ -164,7 +165,7 @@ class _ShootingBox extends ConsumerWidget {
                     if (d?.flashFired != null) ...[
                       const SizedBox(width: 6),
                       Icon(
-                        d!.flashFired! ? Icons.flash_on : Icons.flash_off,
+                        d!.flashFired! ? LucideIcons.zap : LucideIcons.zapOff,
                         size: 14,
                         color: context.colors.textSecondary,
                       ),

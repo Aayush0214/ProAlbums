@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_geometry.dart';
 
 /// The draggable scroll handle on the right edge, with a month bubble.
@@ -233,7 +234,7 @@ class _FastScrollThumbState extends State<FastScrollThumb> {
                               ),
                               child: _dragging
                                   ? Icon(
-                                      Icons.unfold_more_rounded,
+                                      LucideIcons.chevronsUpDown,
                                       size: 20,
                                       color: scheme.onPrimary,
                                     )

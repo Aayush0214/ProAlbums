@@ -8,6 +8,7 @@ import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_geometry.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_row.dart';
 import 'package:proalbums/features/gallery/presentation/grid/thumbnail_size.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_scope.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/date_header.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/drag_select_gestures.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/fast_scroll_thumb.dart';
@@ -237,7 +238,10 @@ class _GalleryGridState extends State<GalleryGrid> {
                 geometry: geometry,
                 viewportHeight: constraints.maxHeight,
                 items: widget.items,
-                enabled: !_pinching,
+                // No drag select while pinching, or when only ONE picture
+                // is chosen (a single picker).
+                enabled: !_pinching &&
+                    MediaScope.maybeOf(context)?.pickMode != PickMode.single,
                 child: CustomScrollView(
                   controller: _controller,
                   reverse: reversed,

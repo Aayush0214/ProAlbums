@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_geometry.dart';
 import 'package:proalbums/features/gallery/presentation/providers/drag_selection.dart';
-import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
 
 /// Long press a photo, then slide the finger: every photo between the start
 /// and the finger is selected (or unselected, if you started on a selected
@@ -89,7 +89,7 @@ class _DragSelectGesturesState extends ConsumerState<DragSelectGestures>
     final index = _indexAt(details.localPosition);
     if (index == null || index >= items.length) return;
 
-    final selection = ref.read(photosSelectionControllerProvider);
+    final selection = ref.read(mediaSelectionOf(context));
     _base = selection.active ? <String>{...selection.ids} : <String>{};
     _select = !(selection.active && selection.ids.contains(items[index].id));
     _anchor = index;
@@ -158,7 +158,7 @@ class _DragSelectGesturesState extends ConsumerState<DragSelectGestures>
         for (var i = from; i <= to; i++) items[i].id,
       ],
     );
-    ref.read(photosSelectionControllerProvider.notifier).setIds(next);
+    ref.read(mediaSelectionOf(context).notifier).setIds(next);
   }
 
   /// One auto-scroll step per screen refresh, while the finger is near the

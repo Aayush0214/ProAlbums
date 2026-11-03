@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
@@ -58,9 +59,10 @@ class _TransferMethodDialog extends StatelessWidget {
   }
 }
 
-/// Copies / moves [items] into [target] behind a small blocking spinner.
-/// Returns the result, or null when it failed (nothing could be done).
-/// The albums list is refreshed either way.
+/// Copies / moves [items] into [target] behind a blocking dialog that shows
+/// the real progress ("12 / 32" and a bar). Returns the result, or null when
+/// it failed (nothing could be done). The albums list is refreshed either
+/// way.
 Future<TransferResult?> runTransfer(
   BuildContext context,
   WidgetRef ref, {
@@ -69,14 +71,20 @@ Future<TransferResult?> runTransfer(
   required TransferMethod method,
 }) async {
   final navigator = Navigator.of(context, rootNavigator: true);
+  final progress = ValueNotifier<int>(0);
   unawaited(
     showDialog<void>(
       context: context,
       useRootNavigator: true,
       barrierDismissible: false,
-      builder: (context) => const PopScope(
+      builder: (context) => PopScope(
         canPop: false,
-        child: Center(child: CircularProgressIndicator()),
+        child: _TransferProgressDialog(
+          method: method,
+          albumName: target.name,
+          total: items.length,
+          progress: progress,
+        ),
       ),
     ),
   );
@@ -84,10 +92,71 @@ Future<TransferResult?> runTransfer(
     items,
     target,
     move: method == TransferMethod.move,
+    onProgress: (done, total) => progress.value = done,
   );
   navigator.pop();
+  progress.dispose();
   ref.invalidate(albumSectionsProvider);
   return result.fold((failure) => null, (value) => value);
+}
+
+/// "Moving to "Trip"", a progress bar, and "12 / 32". Colours and shape come
+/// from the app's dialogTheme.
+class _TransferProgressDialog extends StatelessWidget {
+  const _TransferProgressDialog({
+    required this.method,
+    required this.albumName,
+    required this.total,
+    required this.progress,
+  });
+
+  final TransferMethod method;
+  final String albumName;
+  final int total;
+
+  /// How many files are handled so far (updated by the copy / move).
+  final ValueListenable<int> progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final verb = method == TransferMethod.move ? 'Moving' : 'Copying';
+    return AlertDialog(
+      title: Text('$verb to "$albumName"'),
+      content: ValueListenableBuilder<int>(
+        valueListenable: progress,
+        builder: (context, done, _) {
+          final value = total == 0 ? 0.0 : done / total;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              LinearProgressIndicator(
+                value: value,
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    '${(value * 100).round()}%',
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: context.colors.textSecondary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '$done / $total',
+                    style: context.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
 /// The message after a Copy / Move. null when the person cancelled Android's

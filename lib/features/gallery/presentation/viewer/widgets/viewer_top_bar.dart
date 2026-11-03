@@ -6,7 +6,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/favorites/presentation/providers/favorites_providers.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
+import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_actions.dart';
+import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 
 /// Back button + when the photo was taken, and on the right the heart and the
 /// Info button, on solid black like the system gallery.
@@ -39,8 +42,14 @@ class ViewerTopBar extends ConsumerWidget {
     final date = DateFormat.yMMMd().format(item.createdAt);
     final time = DateFormat.jm().format(item.createdAt);
     final isFavorite = ref.watch(
-      favoriteIdsProvider.select((ids) => ids.value?.contains(item.id) ?? false),
+      favoriteIdsProvider.select(
+        (ids) => ids.value?.contains(item.id) ?? false,
+      ),
     );
+    // The screen the viewer was opened from decides the actions (Recently
+    // deleted: no heart, only Restore / Delete).
+    final mediaContext = ref.read(viewerSessionProvider).mediaContext;
+    final own = viewerBarActionsFor(mediaContext);
 
     // A solid bar in the theme's surface colour (light or dark), like the
     // system gallery.
@@ -56,7 +65,7 @@ class ViewerTopBar extends ConsumerWidget {
               IconButton(
                 tooltip: 'Back',
                 color: onSurface,
-                icon: const Icon(Icons.arrow_back),
+                icon: const Icon(LucideIcons.chevronLeft),
                 onPressed: () {
                   if (context.canPop()) context.pop();
                 },
@@ -66,30 +75,41 @@ class ViewerTopBar extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      date,
-                      style: text.titleMedium,
-                    ),
-                    Text(
-                      time,
-                      style: text.bodySmall,
-                    ),
+                    Text(date, style: text.titleMedium),
+                    Text(time, style: text.bodySmall),
                   ],
                 ),
               ),
-              IconButton(
-                tooltip: isFavorite ? 'Remove from favorites' : 'Add to favorites',
-                color: isFavorite ? AppColors.favoriteHeartRed : onSurface,
-                icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
-                onPressed: () => toggleFavorite(ref, item),
-              ),
+              if (viewerShowsFavorite(mediaContext))
+                IconButton(
+                  tooltip: isFavorite
+                      ? 'Remove from favorites'
+                      : 'Add to favorites',
+                  color: isFavorite ? AppColors.favoriteHeartRed : onSurface,
+                  icon: Icon(
+                    // Favourite: the filled heart (Lucide has no filled icons).
+                    isFavorite ? Icons.favorite : LucideIcons.heart,
+                  ),
+                  onPressed: () => toggleFavorite(ref, item),
+                ),
               IconButton(
                 tooltip: 'Info',
                 color: infoActive ? context.colors.activeAccent : onSurface,
-                icon: const Icon(Icons.info_outline),
+                icon: const Icon(LucideIcons.info),
                 onPressed: onInfo,
               ),
-              if (showActions) ...[
+              if (showActions && own != null)
+                for (final action in own)
+                  IconButton(
+                    tooltip: action.label,
+                    color: action.destructive
+                        ? context.colorScheme.error
+                        : onSurface,
+                    icon: Icon(action.icon ?? LucideIcons.circle),
+                    onPressed: () =>
+                        runViewerAction(context, ref, action, item),
+                  )
+              else if (showActions) ...[
                 IconButton(
                   tooltip: 'Share',
                   color: onSurface,
@@ -99,18 +119,19 @@ class ViewerTopBar extends ConsumerWidget {
                 IconButton(
                   tooltip: 'Edit',
                   color: onSurface,
-                  icon: const Icon(Icons.edit_outlined),
+                  icon: const Icon(LucideIcons.squarePen),
                   onPressed: () => showComingSoon(context, 'Edit'),
                 ),
                 IconButton(
                   tooltip: 'Delete',
                   color: onSurface,
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: onDelete ?? () => showComingSoon(context, 'Delete'),
+                  icon: const Icon(LucideIcons.trash2),
+                  onPressed:
+                      onDelete ?? () => showComingSoon(context, 'Delete'),
                 ),
                 ViewerMoreMenu(
                   item: item,
-                  icon: Icon(Icons.more_vert, color: onSurface),
+                  icon: Icon(LucideIcons.ellipsisVertical, color: onSurface),
                 ),
               ],
             ],

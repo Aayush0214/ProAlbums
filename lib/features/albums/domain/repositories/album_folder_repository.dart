@@ -30,5 +30,6 @@ abstract interface class AlbumFolderRepository {
     List<MediaItem> items,
     TransferTarget target, {
     required bool move,
+    TransferProgress? onProgress,
   });
 }

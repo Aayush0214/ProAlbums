@@ -55,13 +55,19 @@ Source device screenshots of the iQOO app. Behaviour to replicate:
 
 ## 4. Key design (read before coding)
 - `GalleryRow` = ToolbarRow | DateHeaderRow | ItemsRow, built by `GalleryRowsBuilder`. `GalleryGeometry` holds fixed heights and `GridOrigin.extent` (reported by `_SliverOriginReporter`). `GalleryGrid` takes `leadingSlivers`, rows, selection, viewer items.
-- Selection: global `photosSelectionControllerProvider` (`PhotosSelection{active, ids}`). Planned rename → `MediaSelection`.
-- Viewer: `ViewerSession` (keepAlive) holds `ProviderListenable<List<MediaItem>>`; tabs call `openMediaViewer(context, ref, id:, items:)`.
-- Universality gaps (planned): (a) grid `onItemTap` override for picker mode; (b) viewer *context* (Library / Trash / Vault) that chooses action set + loader.
+- **Universal screen recipe (done 2026-11-03):** a screen wraps its Scaffold in `MediaScope(id, mediaContext, items, albumId, pickMode, onPick, onOpen, thumbnailLoader, tileLabel)` and uses `GalleryGrid` (+ `SelectionActionBar` while selecting). Everything below reads the scope; no parameters threaded.
+  - Selection: `MediaSelectionController(scope)` family, autoDispose — every screen has its own (`MediaScope.photos`, `.album(id)`, `.picker(name)`, `.trash`). `mediaSelectionOf(context)`; use `exitIfOpen()` after awaits.
+  - Actions: `MediaAction` (ONE list) + `MediaContext` (library/album/search/trash) → `selectionActionsFor(context)` (bar + More), `viewerMoreActionsFor(context, item)`, `isActionEnabled` (greyed rules). `runMediaAction()` is the ONE place each action is wired (exhaustive switch: a new action must be added there). Done: share, moveCopy, delete, restore, deleteForever. Others = showComingSoon.
+  - Picker: `PickMode.single` (tap = `onPick`) / `multi` (checkboxes always, tap toggles, drag select). Used by Select items + Change cover.
+  - `onOpen` replaces "open viewer" on tap (trash: start selecting); `thumbnailLoader` overrides the loader (trash thumbnails via TrashRepository); `tileLabel` = small badge ("29 days"), hides the video badge.
+  - Viewer: `ViewerSession` holds `ViewerSessionData{items, mediaContext, albumId}`, filled by `openMediaViewer` from the scope. Viewer More menu = `viewerMoreActionsFor` + `runMediaAction`.
+- Loading: always `GalleryGridSkeleton` / `SliverGalleryGridSkeleton` (shimmer, `shared/widgets/shimmer_skeleton.dart`: one CustomPainter, no saveLayer, shared phase). No spinners in grids.
+- Move/Copy progress: FolderChannel `transferProgress` (≤30/s) → `TransferProgress` callback → `_TransferProgressDialog` ("Moving to X", bar, N / total).
+- Trash viewer: `ViewerSessionData.imageLoader` (= the scope's `thumbnailLoader`) feeds thumbnail, screen-size picture and filmstrip from the trash's native decoder; videos show a still frame (no player). `viewerBarActionsFor(context)` gives the viewer its own bar (trash: Restore, Delete); `viewerShowsFavorite`. `MediaAction.destructive` → theme `error` colour when enabled.
 
 ## 5. Roadmap (order)
-1. Finish shared grid + viewer: picker mode, MediaSelection rename, viewer contexts, selection-bar actions (~~Move/Copy~~ done + verified; Create, Hide, More), viewer More menu (14 actions; its Move/Copy should reuse `AppRoutes.moveCopy`), Change cover + album picker pages.
-2. Shimmer skeleton in the shared grid (Photos too).
+1. ~~Shared grid + viewer universal (MediaSelection, MediaScope/context/actions, picker mode, trash on shared grid)~~ done. Next: the actions themselves via `runMediaAction` (Create, Hide, Copy to clipboard, PDF/PPT, Print, viewer More items), trash viewer.
+2. ~~Shimmer skeleton in every grid~~ done.
 3. Tabs: Search, For You/Recommended, Recently deleted (Trash viewer + restore/delete + 30-day badge), Cleanup suggestions, Storage analysis, Settings structure.
 4. Later: vault/Hide (phase 6), intelligent classification (8), cleanup suggestions engine (9), backup (12).
 5. Release prep: OFL font licence, licences page, R8 release test, signing, privacy policy, Play listing.

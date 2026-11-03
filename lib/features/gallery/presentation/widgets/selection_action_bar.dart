@@ -1,72 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart';
-import 'package:go_router/go_router.dart';
-import 'package:proalbums/app/router/app_routes.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
+import 'package:proalbums/features/gallery/presentation/actions/media_action_runner.dart';
+import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
 import 'package:proalbums/features/gallery/presentation/providers/gallery_rows_provider.dart';
-import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
-import 'package:proalbums/features/gallery/presentation/providers/share_providers.dart';
-import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_actions.dart';
-import 'package:proalbums/features/trash/presentation/widgets/delete_flow.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
 
-/// What the "More" menu of the selection bar can do.
-enum SelectionMoreAction {
-  hide('Hide'),
-  copyToClipboard('Copy to clipboard'),
-  pdfPpt('PDF/PPT'),
-  print('Print');
-
-  const SelectionMoreAction(this.label);
-  final String label;
-}
-
-/// Which More options are ON, like the system gallery. All four always show;
-/// the ones that do not apply are greyed out, never hidden.
-/// - only pictures (one or many): all four on
-/// - pictures + videos: Hide and PDF/PPT on
-/// - only videos (one or many): Hide only
-Map<SelectionMoreAction, bool> selectionMoreStates({
-  required bool hasImage,
-  required bool hasVideo,
-}) {
-  return {
-    SelectionMoreAction.hide: true,
-    SelectionMoreAction.copyToClipboard: hasImage && !hasVideo,
-    SelectionMoreAction.pdfPpt: hasImage,
-    SelectionMoreAction.print: hasImage && !hasVideo,
-  };
-}
-
-/// Bottom bar while selecting, like the system gallery: Share, Move/Copy,
-/// Create, Delete, More. Create and the More actions arrive with their own
-/// phases (until then they say so).
-class SelectionActionBar extends ConsumerWidget {
-  const SelectionActionBar({this.items, this.albumId, super.key});
-
-  /// Where the selected ids are looked up. null = the Photos tab list; an
-  /// album passes its own list, so the SAME bar works there.
-  final ProviderListenable<List<MediaItem>>? items;
-
-  /// The album being shown (null on the Photos tab). Move/Copy does not
-  /// offer it as a target.
-  final String? albumId;
-
-  ProviderListenable<List<MediaItem>> get _items =>
-      items ?? photosDisplayItemsProvider;
-
-  List<MediaItem> _selected(WidgetRef ref) {
-    final ids = ref.read(photosSelectionControllerProvider).ids;
-    return ref.read(_items).where((item) => ids.contains(item.id)).toList();
-  }
+/// Bottom bar while selecting, like the system gallery. WHAT it offers comes
+/// from the screen's [MediaScope] context (e.g. Share, Move/Copy, Create,
+/// Delete, More on the Photos tab; Restore, Delete in Recently deleted), and
+/// every action runs through [runMediaAction], so the bar is the same widget
+/// on every screen.
+class SelectionActionBar extends StatelessWidget {
+  const SelectionActionBar({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(
-      photosSelectionControllerProvider.select((s) => s.count),
-    );
+  Widget build(BuildContext context) {
+    final scope = MediaScope.of(context);
+    final actions = selectionActionsFor(scope.mediaContext);
     final scheme = Theme.of(context).colorScheme;
-    final none = count == 0;
 
     return Material(
       color: scheme.surface,
@@ -79,142 +32,114 @@ class SelectionActionBar extends ConsumerWidget {
           height: 64,
           child: Row(
             children: [
-              _BarAction(
-                icon: Icons.ios_share,
-                label: 'Share',
-                onPressed: none ? null : () => _share(context, ref),
-              ),
-              _BarAction(
-                icon: Icons.library_add_outlined,
-                label: 'Move/Copy',
-                onPressed: none ? null : () => _moveCopy(context, ref),
-              ),
-              _BarAction(
-                icon: Icons.edit_outlined,
-                label: 'Create',
-                onPressed:
-                    none ? null : () => showComingSoon(context, 'Create'),
-              ),
-              _BarAction(
-                icon: Icons.delete_outline,
-                label: 'Delete',
-                onPressed: none ? null : () => _delete(context, ref),
-              ),
-              _MoreAction(enabled: !none, items: _items),
+              for (final action in actions.bar) _BarAction(action: action),
+              if (actions.more.isNotEmpty) _MoreAction(actions: actions.more),
             ],
           ),
         ),
       ),
     );
   }
+}
 
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final done = await deleteMediaItems(context, ref, _selected(ref));
-    // Deleted: leave selection mode. Cancelled: the selection stays.
-    if (done) ref.read(photosSelectionControllerProvider.notifier).exit();
-  }
+/// The selected items of this screen, in the screen's order.
+List<MediaItem> _selectedItems(BuildContext context, WidgetRef ref) {
+  final scope = MediaScope.of(context);
+  final ids = ref.read(mediaSelectionOf(context)).ids;
+  return ref
+      .read(scope.items ?? photosDisplayItemsProvider)
+      .where((item) => ids.contains(item.id))
+      .toList();
+}
 
-  /// Opens the album list (the albums feature, reached only by its route).
-  Future<void> _moveCopy(BuildContext context, WidgetRef ref) async {
-    final items = _selected(ref);
-    if (items.isEmpty) return;
-    // Taken before the await: when every item is moved out of an album, the
-    // album page (and this bar) may be gone when the answer comes back.
-    final selection = ref.read(photosSelectionControllerProvider.notifier);
-    final done = await context.push<bool>(
-      AppRoutes.moveCopy(fromAlbumId: albumId),
-      extra: items,
+Future<void> _run(BuildContext context, WidgetRef ref, MediaAction action) async {
+  // Taken before the await: the screen (and this bar) may be gone when the
+  // action finishes (e.g. every picture moved out of an album).
+  final selection = ref.read(mediaSelectionOf(context).notifier);
+  final done = await runMediaAction(
+    context,
+    ref,
+    action,
+    _selectedItems(context, ref),
+    albumId: MediaScope.of(context).albumId,
+  );
+  // Done: leave selection mode. Cancelled: the selection stays.
+  if (done) selection.exitIfOpen();
+}
+
+class _BarAction extends ConsumerWidget {
+  const _BarAction({required this.action});
+
+  final MediaAction action;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Only "anything selected?" rebuilds the button.
+    final enabled = ref.watch(
+      mediaSelectionOf(context).select((s) => s.count > 0),
     );
-    // Copied / moved: leave selection mode. Closed: the selection stays.
-    if (done ?? false) selection.exit();
-  }
+    // Disabled: every button the same grey. Enabled: a destructive one
+    // (delete for good) in the theme's error colour.
+    final scheme = Theme.of(context).colorScheme;
+    final color = !enabled
+        ? Theme.of(context).disabledColor
+        : action.destructive
+        ? scheme.error
+        : scheme.onSurface;
 
-  Future<void> _share(BuildContext context, WidgetRef ref) async {
-    final ids = ref.read(photosSelectionControllerProvider).ids.toList();
-    final messenger = ScaffoldMessenger.of(context);
-
-    final result = await ref.read(shareMediaUseCaseProvider)(ids);
-
-    result.match(
-      (failure) => messenger.showSnackBar(
-        const SnackBar(content: Text('Could not share the selected items.')),
+    return Expanded(
+      child: InkWell(
+        onTap: enabled ? () => _run(context, ref, action) : null,
+        borderRadius: BorderRadius.circular(12),
+        child: _BarBody(
+          icon: action.icon ?? LucideIcons.circle,
+          label: action.label,
+          color: color,
+        ),
       ),
-      (_) {},
     );
   }
 }
 
-/// More menu of the selection bar (see [selectionMoreStates]).
+/// More menu of the selection bar. Options that do not apply to the
+/// selection are greyed out (see [isActionEnabled]).
 class _MoreAction extends ConsumerWidget {
-  const _MoreAction({required this.enabled, required this.items});
+  const _MoreAction({required this.actions});
 
-  final bool enabled;
-  final ProviderListenable<List<MediaItem>> items;
+  final List<MediaAction> actions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(
+      mediaSelectionOf(context).select((s) => s.count > 0),
+    );
     final color = enabled
         ? Theme.of(context).colorScheme.onSurface
         : Theme.of(context).disabledColor;
 
     return Expanded(
-      child: PopupMenuButton<SelectionMoreAction>(
+      child: PopupMenuButton<MediaAction>(
         enabled: enabled,
         tooltip: 'More',
-        onSelected: (action) => showComingSoon(context, action.label),
-        itemBuilder: (context) {
-          final ids = ref.read(photosSelectionControllerProvider).ids;
-          final selected = ref
-              .read(items)
-              .where((item) => ids.contains(item.id))
-              .toList();
-          final states = selectionMoreStates(
-            hasImage: selected.any((item) => !item.isVideo),
-            hasVideo: selected.any((item) => item.isVideo),
-          );
-          PopupMenuItem<SelectionMoreAction> menuItem(
-            SelectionMoreAction action, {
-            required bool on,
-          }) =>
-              PopupMenuItem<SelectionMoreAction>(
-                value: action,
-                enabled: on,
-                child: Text(action.label),
-              );
-
+        onSelected: (action) => _run(context, ref, action),
+        itemBuilder: (menuContext) {
+          final selected = _selectedItems(context, ref);
+          final hasImage = selected.any((item) => !item.isVideo);
+          final hasVideo = selected.any((item) => item.isVideo);
           return [
-            for (final entry in states.entries)
-              menuItem(entry.key, on: entry.value),
+            for (final action in actions)
+              PopupMenuItem<MediaAction>(
+                value: action,
+                enabled: isActionEnabled(
+                  action,
+                  hasImage: hasImage,
+                  hasVideo: hasVideo,
+                ),
+                child: Text(action.label),
+              ),
           ];
         },
-        child: _BarBody(icon: Icons.more_vert, label: 'More', color: color),
-      ),
-    );
-  }
-}
-
-class _BarAction extends StatelessWidget {
-  const _BarAction({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = onPressed != null
-        ? Theme.of(context).colorScheme.onSurface
-        : Theme.of(context).disabledColor;
-
-    return Expanded(
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
-        child: _BarBody(icon: icon, label: label, color: color),
+        child: _BarBody(icon: LucideIcons.ellipsisVertical, label: 'More', color: color),
       ),
     );
   }

@@ -17,7 +17,6 @@ import 'package:proalbums/features/albums/presentation/widgets/album_tile.dart';
 import 'package:proalbums/features/albums/presentation/widgets/new_album_flow.dart';
 import 'package:proalbums/features/albums/presentation/widgets/open_album.dart';
 import 'package:proalbums/features/albums/presentation/widgets/other_albums_tile.dart';
-import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_actions.dart';
 import 'package:proalbums/features/permissions/presentation/providers/limited_access_banner_provider.dart';
 import 'package:proalbums/features/permissions/presentation/providers/visible_media_providers.dart';
 import 'package:proalbums/features/permissions/presentation/widgets/limited_access_banner.dart';
@@ -25,6 +24,7 @@ import 'package:proalbums/features/permissions/presentation/widgets/limited_acce
 import 'package:proalbums/features/storage/presentation/widgets/storage_card.dart';
 import 'package:proalbums/features/trash/presentation/widgets/recently_deleted_row.dart';
 import 'package:proalbums/shared/shell/shell_bottom_bar_provider.dart';
+import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
 
 enum _AlbumsMenu { select, settings }
@@ -75,6 +75,7 @@ class AlbumsPage extends ConsumerWidget {
         onPressed: () => startNewAlbumFlow(context, ref),
       ),
       PopupMenuButton<_AlbumsMenu>(
+        icon: const Icon(LucideIcons.ellipsisVertical),
         tooltip: 'More',
         onSelected: (item) {
           switch (item) {

@@ -5,16 +5,16 @@ import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_geometry.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_row.dart';
 import 'package:proalbums/features/gallery/presentation/providers/gallery_rows_provider.dart';
-import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
+import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/drag_select_gestures.dart';
 
 MediaItem _item(int i) => MediaItem(
-      id: '$i',
-      type: MediaType.image,
-      createdAt: DateTime(2026, 10, 12),
-      width: 1,
-      height: 1,
-    );
+  id: '$i',
+  type: MediaType.image,
+  createdAt: DateTime(2026, 10, 12),
+  width: 1,
+  height: 1,
+);
 
 void main() {
   final items = [for (var i = 0; i < 8; i++) _item(i)];
@@ -39,11 +39,18 @@ void main() {
       overrides: [photosDisplayItemsProvider.overrideWithValue(items)],
     );
     addTearDown(container.dispose);
+    // The page watches its selection in the app; here this keeps it alive.
+    container.listen(
+      mediaSelectionControllerProvider(MediaScope.photos),
+      (_, _) {},
+    );
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          builder: (context, child) =>
+              MediaScope(id: MediaScope.photos, child: child!),
           home: DragSelectGestures(
             controller: controller,
             geometry: geometry,
@@ -68,7 +75,9 @@ void main() {
     await finger.up();
     await tester.pump();
 
-    final selection = container.read(photosSelectionControllerProvider);
+    final selection = container.read(
+      mediaSelectionControllerProvider(MediaScope.photos),
+    );
     expect(selection.active, isTrue);
     expect(selection.ids, {'0'});
   });
@@ -83,22 +92,35 @@ void main() {
     await second.up();
     await tester.pump();
 
-    expect(container.read(photosSelectionControllerProvider).active, isFalse);
+    expect(
+      container
+          .read(mediaSelectionControllerProvider(MediaScope.photos))
+          .active,
+      isFalse,
+    );
   });
 
-  testWidgets('nothing starts while a pinch is in progress (enabled: false)',
-      (tester) async {
+  testWidgets('nothing starts while a pinch is in progress (enabled: false)', (
+    tester,
+  ) async {
     final controller = ScrollController();
     addTearDown(controller.dispose);
     final container = ProviderContainer(
       overrides: [photosDisplayItemsProvider.overrideWithValue(items)],
     );
     addTearDown(container.dispose);
+    // The page watches its selection in the app; here this keeps it alive.
+    container.listen(
+      mediaSelectionControllerProvider(MediaScope.photos),
+      (_, _) {},
+    );
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          builder: (context, child) =>
+              MediaScope(id: MediaScope.photos, child: child!),
           home: DragSelectGestures(
             controller: controller,
             geometry: GalleryGeometry(rows: rows, width: 400, columns: 4),
@@ -119,6 +141,11 @@ void main() {
     await finger.up();
     await tester.pump();
 
-    expect(container.read(photosSelectionControllerProvider).active, isFalse);
+    expect(
+      container
+          .read(mediaSelectionControllerProvider(MediaScope.photos))
+          .active,
+      isFalse,
+    );
   });
 }

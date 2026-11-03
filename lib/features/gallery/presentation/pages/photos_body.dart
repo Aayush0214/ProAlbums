@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/error/failures.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_page_request.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_geometry.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_grid.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_grid_skeleton.dart';
 import 'package:proalbums/features/gallery/presentation/providers/gallery_rows_provider.dart';
 import 'package:proalbums/features/gallery/presentation/providers/photos_controller.dart';
 import 'package:proalbums/features/gallery/presentation/providers/photos_query_controller.dart';
@@ -47,8 +49,18 @@ class _PhotosBodyState extends ConsumerState<PhotosBody> {
 
     return photos.when(
       skipLoadingOnReload: true, // keep old photos while a new filter loads
-      skipLoadingOnRefresh: false, // but show a spinner on "Try again"
-      loading: () => const Center(child: CircularProgressIndicator()),
+      skipLoadingOnRefresh: false, // but show the skeleton on "Try again"
+      // Shimmering tiles in the grid's shape, never a spinner. The space of
+      // the toolbar ("Library · N items" + filters) stays free, so the tiles
+      // do not jump when the real grid arrives.
+      loading: () => Padding(
+        padding: const EdgeInsets.only(top: GalleryGeometry.toolbarHeight),
+        child: GalleryGridSkeleton(
+          columns: ref.watch(
+            photosViewSettingsControllerProvider.select((s) => s.columns),
+          ),
+        ),
+      ),
       error: (error, stackTrace) => _ErrorView(
         message: error is Failure ? error.message : 'Something went wrong.',
         onRetry: () => ref.invalidate(photosControllerProvider),
@@ -107,7 +119,7 @@ class _EmptyView extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            Icons.photo_library_outlined,
+            LucideIcons.images,
             size: 48,
             color: context.colors.textSecondary,
           ),
