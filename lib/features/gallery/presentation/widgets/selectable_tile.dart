@@ -1,79 +1,56 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
-import 'package:proalbums/features/favorites/presentation/providers/favorites_providers.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
+import 'package:proalbums/features/gallery/presentation/images/media_thumbnail_image.dart';
 import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
-import 'package:proalbums/features/gallery/presentation/viewer/open_media_viewer.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/media_thumbnail.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selection_checkbox.dart';
 
-enum _TileMode { normal, unselected, selected }
+/// What a tile shows about selection.
+enum TileMode { normal, unselected, selected }
 
 /// A thumbnail that opens the viewer on tap, and can be selected. (Long press
 /// and drag are handled for the whole grid by DragSelectGestures.)
 ///
-/// Each tile watches ONLY its own state (normal / unselected / selected), so
-/// selecting one photo rebuilds one tile, not the whole grid.
-class SelectableTile extends ConsumerWidget {
+/// A plain widget on purpose: its row ([GalleryItemsRow]) watches selection
+/// and hearts ONCE for all its tiles and passes the answers in. One watch per
+/// tile meant 100+ Riverpod subscriptions made and closed on every zoom
+/// (~6 ms of a zoom frame in the CPU profile).
+class SelectableTile extends StatelessWidget {
   const SelectableTile({
     required this.item,
     required this.thumbnailSize,
     required this.compact,
-    this.items,
-    this.onLongPress,
+    required this.mode,
+    required this.isFavorite,
+    required this.load,
+    required this.onTap,
     super.key,
   });
 
   final MediaItem item;
   final int thumbnailSize;
   final bool compact;
+  final TileMode mode;
+  final bool isFavorite;
+  final ThumbnailLoader load;
 
-  /// The list the viewer swipes through. null = the Photos tab list; an album
-  /// passes its own list.
-  final ProviderListenable<List<MediaItem>>? items;
-
-  /// null = the grid handles long press itself (Photos tab: drag select).
-  /// An album passes "start selecting with this item".
-  final VoidCallback? onLongPress;
+  /// Normal mode: open the viewer. Selection mode: select / unselect.
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(
-      photosSelectionControllerProvider.select(
-        (s) => !s.active
-            ? _TileMode.normal
-            : s.ids.contains(item.id)
-                ? _TileMode.selected
-                : _TileMode.unselected,
-      ),
-    );
-    // Only this tile rebuilds when ITS heart changes.
-    final isFavorite = ref.watch(
-      favoriteIdsProvider.select((ids) => ids.value?.contains(item.id) ?? false),
-    );
-    final controller = ref.read(photosSelectionControllerProvider.notifier);
-    final selected = mode == _TileMode.selected;
+  Widget build(BuildContext context) {
+    final selected = mode == TileMode.selected;
 
     return GestureDetector(
-      onLongPress: onLongPress == null
-          ? null
-          : () {
-              HapticFeedback.selectionClick();
-              onLongPress!();
-            },
-      // Normal mode: open the viewer. Selection mode: select / unselect.
-      onTap: mode == _TileMode.normal
-          ? () => openMediaViewer(context, ref, id: item.id, items: items)
-          : () => controller.toggle(item.id),
+      onTap: onTap,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          MediaThumbnail(
+          MediaThumbnailView(
             item: item,
             size: thumbnailSize,
+            load: load,
             compactBadge: compact,
             // Heart (18 px, or 10 px when tiny) + a small gap.
             badgeInset: isFavorite ? (compact ? 12 : 22) : 0,
@@ -86,14 +63,16 @@ class SelectableTile extends ConsumerWidget {
                 Icons.favorite_rounded,
                 size: compact ? 10 : 18,
                 color: AppColors.mediaBadgeText,
-                shadows: const [Shadow(blurRadius: 4, color: AppColors.mediaBadgeFill)],
+                shadows: const [
+                  Shadow(blurRadius: 4, color: AppColors.mediaBadgeFill),
+                ],
               ),
             ),
           if (selected)
             ColoredBox(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.22),
+              color: context.colorScheme.primary.withValues(alpha: 0.22),
             ),
-          if (mode != _TileMode.normal)
+          if (mode != TileMode.normal)
             Positioned(
               top: compact ? 3 : 6,
               right: compact ? 3 : 6,

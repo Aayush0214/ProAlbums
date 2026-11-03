@@ -1,7 +1,7 @@
 # ProAlbums — project rules for Claude Code
 
 Flutter gallery app (appId `com.aayush.proalbums`), modelled on the iQOO "Albums" app. Android first (minSdk 31, target 36), Play Store quality.
-Owner: Aayush. He writes Hinglish; reply in Hinglish. He makes the git commits himself (never commit/push unless asked; work on a feature branch).
+Owner: Aayush. He writes Hinglish; reply in Hinglish. He makes the git commits himself (never commit/push unless asked). Work on the `dev` branch; do NOT create new branches unless he asks.
 
 Project context (product, reference screens, status, roadmap) — auto-loaded; keep it updated after every finished task:
 @docs/PROJECT_CONTEXT.md
