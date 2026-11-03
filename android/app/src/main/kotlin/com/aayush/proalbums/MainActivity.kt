@@ -28,6 +28,7 @@ class MainActivity : FlutterActivity() {
         folderChannel = FolderChannel(this)
         folderChannel.register(flutterEngine.dartExecutor.binaryMessenger)
         StorageChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
+        ClipboardChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     @Deprecated("Flutter still delivers system-screen results this way")

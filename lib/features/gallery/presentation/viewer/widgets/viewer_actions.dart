@@ -19,14 +19,9 @@ Future<void> shareViewerItem(
   WidgetRef ref,
   MediaItem item,
 ) async {
-  final messenger = ScaffoldMessenger.of(context);
-  final width = MediaQuery.sizeOf(context).width;
+  final toast = AppToast.of(context);
   final result = await ref.read(shareMediaUseCaseProvider)([item.id]);
-  result.match(
-    (failure) =>
-        showAppSnackBarOn(messenger, width, 'Could not share this item.'),
-    (_) {},
-  );
+  result.match((failure) => toast.show('Could not share this item.'), (_) {});
 }
 
 /// Heart on / off. Reads the current state, so there is nothing to pass in.

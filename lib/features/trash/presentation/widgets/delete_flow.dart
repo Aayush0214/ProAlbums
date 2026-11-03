@@ -34,8 +34,7 @@ Future<bool> deleteMediaItems(
 }) async {
   if (items.isEmpty) return false;
   // Taken now: the screen can be gone (the viewer closes) when the message shows.
-  final messenger = ScaffoldMessenger.of(context);
-  final screenWidth = MediaQuery.sizeOf(context).width;
+  final toast = AppToast.of(context);
   // Taken now too: "Undo" may be tapped after this screen is gone.
   final restore = ref.read(restoreFromTrashUseCaseProvider);
 
@@ -61,8 +60,7 @@ Future<bool> deleteMediaItems(
     return _deleteForGood(
       ref,
       items,
-      messenger: messenger,
-      screenWidth: screenWidth,
+      toast: toast,
       bottomInset: snackBarBottomInset,
     );
   }
@@ -70,9 +68,7 @@ Future<bool> deleteMediaItems(
   final result = await ref.read(moveToTrashUseCaseProvider)(items);
   return result.match(
     (failure) {
-      showAppSnackBarOn(
-        messenger,
-        screenWidth,
+      toast.show(
         'Could not delete the selected items.',
         bottomInset: snackBarBottomInset,
       );
@@ -80,9 +76,7 @@ Future<bool> deleteMediaItems(
     },
     (outcome) {
       if (outcome != TrashOutcome.trashed) return false;
-      showAppSnackBarOn(
-        messenger,
-        screenWidth,
+      toast.show(
         items.length == 1
             ? 'Moved to "Recently deleted".'
             : '${items.length} items moved to "Recently deleted".',
@@ -100,16 +94,13 @@ Future<bool> deleteMediaItems(
 Future<bool> _deleteForGood(
   WidgetRef ref,
   List<MediaItem> items, {
-  required ScaffoldMessengerState messenger,
-  required double screenWidth,
+  required AppToast toast,
   required double bottomInset,
 }) async {
   final result = await ref.read(deleteForeverUseCaseProvider)(items);
   return result.match(
     (failure) {
-      showAppSnackBarOn(
-        messenger,
-        screenWidth,
+      toast.show(
         'Could not delete the selected items.',
         bottomInset: bottomInset,
       );
@@ -117,9 +108,7 @@ Future<bool> _deleteForGood(
     },
     (outcome) {
       if (outcome != TrashActionOutcome.done) return false;
-      showAppSnackBarOn(
-        messenger,
-        screenWidth,
+      toast.show(
         items.length == 1
             ? 'Deleted permanently.'
             : '${items.length} items deleted permanently.',
@@ -149,7 +138,8 @@ Future<void> _askForAccessOnce(
   final allow = await showConfirmDialog(
     context,
     title: 'Delete without extra pop-ups?',
-    message: 'Turn on "Media management" for ProAlbums on the next screen. '
+    message:
+        'Turn on "Media management" for ProAlbums on the next screen. '
         'Then deleting only asks once (in the app), not again in Android.',
     confirmLabel: 'Open settings',
     cancelLabel: 'Not now',

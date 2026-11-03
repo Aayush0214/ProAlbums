@@ -59,9 +59,9 @@ void main() {
       }
     });
 
-    test('pictures + videos: Hide and PDF/PPT on', () {
+    test('pictures + videos: Hide only (PDF/PPT is images only)', () {
       expect(on(MediaAction.hide, image: true, video: true), isTrue);
-      expect(on(MediaAction.pdfPpt, image: true, video: true), isTrue);
+      expect(on(MediaAction.pdfPpt, image: true, video: true), isFalse);
       expect(
         on(MediaAction.copyToClipboard, image: true, video: true),
         isFalse,

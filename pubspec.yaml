@@ -132,6 +132,11 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # App icon shown in the toasts (AppToast). Replace this file when the
+  # real launcher icon is set.
+  assets:
+    - assets/branding/app_icon.png
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

@@ -13,19 +13,16 @@ Future<bool> restoreMediaItems(
   WidgetRef ref,
   List<MediaItem> items,
 ) async {
-  final messenger = ScaffoldMessenger.of(context);
-  final width = MediaQuery.sizeOf(context).width;
+  final toast = AppToast.of(context);
   final result = await ref.read(restoreFromTrashUseCaseProvider)(items);
   return result.match(
     (failure) {
-      showAppSnackBarOn(messenger, width, failure.message);
+      toast.show(failure.message);
       return false;
     },
     (outcome) {
       if (outcome != TrashActionOutcome.done) return false;
-      showAppSnackBarOn(
-        messenger,
-        width,
+      toast.show(
         items.length == 1 ? 'Restored.' : '${items.length} items restored.',
       );
       ref.invalidate(trashedItemsProvider);
@@ -46,24 +43,22 @@ Future<bool> deleteForeverMediaItems(
     title: items.length == 1
         ? 'Delete permanently?'
         : 'Delete ${items.length} items permanently?',
-    message: 'This cannot be undone. The files will be removed from your phone.',
+    message:
+        'This cannot be undone. The files will be removed from your phone.',
     confirmLabel: 'Delete',
   );
   if (yes != true || !context.mounted) return false;
 
-  final messenger = ScaffoldMessenger.of(context);
-  final width = MediaQuery.sizeOf(context).width;
+  final toast = AppToast.of(context);
   final result = await ref.read(deleteForeverUseCaseProvider)(items);
   return result.match(
     (failure) {
-      showAppSnackBarOn(messenger, width, failure.message);
+      toast.show(failure.message);
       return false;
     },
     (outcome) {
       if (outcome != TrashActionOutcome.done) return false;
-      showAppSnackBarOn(
-        messenger,
-        width,
+      toast.show(
         items.length == 1
             ? 'Deleted permanently.'
             : '${items.length} items deleted permanently.',

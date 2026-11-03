@@ -27,17 +27,12 @@ Future<bool> runMediaAction(
   if (items.isEmpty) return false;
   switch (action) {
     case MediaAction.share:
-      final messenger = ScaffoldMessenger.of(context);
-      final width = MediaQuery.sizeOf(context).width;
+      final toast = AppToast.of(context);
       final result = await ref.read(shareMediaUseCaseProvider)([
         for (final item in items) item.id,
       ]);
       result.match(
-        (failure) => showAppSnackBarOn(
-          messenger,
-          width,
-          'Could not share the selected items.',
-        ),
+        (failure) => toast.show('Could not share the selected items.'),
         (_) {},
       );
       // Like the system gallery: the selection stays after sharing.
@@ -60,20 +55,32 @@ Future<bool> runMediaAction(
     case MediaAction.deleteForever:
       return deleteForeverMediaItems(context, ref, items);
 
+    case MediaAction.copyToClipboard:
+      final toast = AppToast.of(context);
+      final result = await ref.read(copyToClipboardUseCaseProvider)(items);
+      result.match(
+        (failure) => toast.show(failure.message),
+        // Android 13+ shows its own "Copied"; older Android gets ours.
+        (systemConfirms) {
+          if (!systemConfirms) toast.show('Copied');
+        },
+      );
+      // Like the system gallery: the selection stays after copying.
+      return false;
+
     case MediaAction.create ||
-          MediaAction.hide ||
-          MediaAction.copyToClipboard ||
-          MediaAction.pdfPpt ||
-          MediaAction.print ||
-          MediaAction.setAsWallpaper ||
-          MediaAction.googleLens ||
-          MediaAction.rename ||
-          MediaAction.compressSize ||
-          MediaAction.slideshow ||
-          MediaAction.contactPicture ||
-          MediaAction.rotate ||
-          MediaAction.screenMirroring ||
-          MediaAction.convertToH264:
+        MediaAction.hide ||
+        MediaAction.pdfPpt ||
+        MediaAction.print ||
+        MediaAction.setAsWallpaper ||
+        MediaAction.googleLens ||
+        MediaAction.rename ||
+        MediaAction.compressSize ||
+        MediaAction.slideshow ||
+        MediaAction.contactPicture ||
+        MediaAction.rotate ||
+        MediaAction.screenMirroring ||
+        MediaAction.convertToH264:
       // Each one is switched on by the phase that builds it.
       showComingSoon(context, action.label);
       return false;

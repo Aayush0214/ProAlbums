@@ -88,16 +88,18 @@ SelectionActions selectionActionsFor(MediaContext context) => switch (context) {
 
 /// Is [action] ON for a selection with pictures and/or videos? Options that
 /// do not apply are greyed out, never hidden (like the system gallery):
-///  - Copy to clipboard and Print: only pictures,
-///  - PDF/PPT: needs at least one picture,
-///  - everything else: always.
+///  - Copy to clipboard, PDF/PPT and Print: ONLY pictures (one video in the
+///    selection turns them off: they cannot do anything with a video, the
+///    system gallery's PDF/PPT even says "Images only"),
+///  - everything else (Hide...): always.
 bool isActionEnabled(
   MediaAction action, {
   required bool hasImage,
   required bool hasVideo,
 }) => switch (action) {
-  MediaAction.copyToClipboard || MediaAction.print => hasImage && !hasVideo,
-  MediaAction.pdfPpt => hasImage,
+  MediaAction.copyToClipboard ||
+  MediaAction.pdfPpt ||
+  MediaAction.print => hasImage && !hasVideo,
   _ => true,
 };
 

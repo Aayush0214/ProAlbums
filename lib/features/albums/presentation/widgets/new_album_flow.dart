@@ -56,9 +56,8 @@ Future<String?> createNewAlbum(
 ///  3. Copy / Move / Cancel
 Future<void> startNewAlbumFlow(BuildContext context, WidgetRef ref) async {
   // Taken now: the screens change while the person goes through the steps.
-  final messenger = ScaffoldMessenger.of(context);
-  final screenWidth = MediaQuery.sizeOf(context).width;
-  void say(String text) => showAppSnackBarOn(messenger, screenWidth, text);
+  final toast = AppToast.of(context);
+  void say(String text) => toast.show(text);
 
   final name = await createNewAlbum(context, ref, say: say);
   if (name == null || !context.mounted) return;
