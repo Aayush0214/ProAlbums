@@ -4,6 +4,7 @@ import 'package:proalbums/core/error/failures.dart';
 import 'package:proalbums/core/logging/app_logger.dart';
 import 'package:proalbums/core/utils/typedefs.dart';
 import 'package:proalbums/features/albums/domain/entities/folder_outcomes.dart';
+import 'package:proalbums/features/albums/domain/entities/transfer_target.dart';
 import 'package:proalbums/features/albums/domain/repositories/album_folder_repository.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 
@@ -92,7 +93,7 @@ final class MethodChannelAlbumFolderRepository implements AlbumFolderRepository 
   @override
   FutureResult<TransferResult> transfer(
     List<MediaItem> items,
-    String folderName, {
+    TransferTarget target, {
     required bool move,
   }) async {
     if (items.isEmpty) {
@@ -104,7 +105,10 @@ final class MethodChannelAlbumFolderRepository implements AlbumFolderRepository 
       final answer = await _channel.invokeMapMethod<String, Object?>('transfer', {
         'ids': [for (final item in items) item.id],
         'videos': [for (final item in items) item.isVideo],
-        'folder': folderName,
+        // The folder of this album, found on the Android side. When it has
+        // no files (or no id), the files go to Pictures/<folder>.
+        'albumId': target.albumId,
+        'folder': target.name,
         'move': move,
       });
       final cancelled = answer?['status'] == 'cancelled';

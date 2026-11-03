@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/features/albums/domain/entities/album.dart';
+import 'package:proalbums/features/albums/domain/entities/transfer_target.dart';
 import 'package:proalbums/features/albums/presentation/providers/album_prefs_controller.dart';
 import 'package:proalbums/features/albums/presentation/providers/albums_providers.dart';
 import 'package:proalbums/features/albums/presentation/widgets/new_album_dialog.dart';
@@ -17,10 +18,7 @@ import 'package:proalbums/shared/widgets/confirm_dialog.dart';
 
 /// "All", "Videos" and "Favorites" are not folders: you cannot rename or
 /// delete them.
-bool isRealFolder(Album album) =>
-    album.kind != AlbumKind.all &&
-    album.kind != AlbumKind.videos &&
-    album.kind != AlbumKind.favorites;
+bool isRealFolder(Album album) => album.isFolder;
 
 void _say(BuildContext context, String text) => showAppSnackBar(context, text);
 
@@ -131,7 +129,7 @@ Future<bool> renameAlbum(
   } else {
     final result = await ref.read(transferToAlbumUseCaseProvider)(
       items,
-      name,
+      TransferTarget.newFolder(name),
       move: true,
     );
     final value = result.fold((failure) => null, (value) => value);

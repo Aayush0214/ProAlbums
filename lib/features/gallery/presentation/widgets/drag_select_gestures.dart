@@ -1,7 +1,7 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
@@ -41,9 +41,13 @@ class DragSelectGestures extends ConsumerStatefulWidget {
   ConsumerState<DragSelectGestures> createState() => _DragSelectGesturesState();
 }
 
-class _DragSelectGesturesState extends ConsumerState<DragSelectGestures> {
+class _DragSelectGesturesState extends ConsumerState<DragSelectGestures>
+    with SingleTickerProviderStateMixin {
   static const double _edgeZone = 80;
-  static const double _maxScrollPerTick = 18;
+
+  /// Top auto-scroll speed (finger at the very edge). Same as the old
+  /// 18 px every 16 ms, but per second, so it is equally fast at 60 and 120 Hz.
+  static const double _maxScrollPerSecond = 1125;
 
   // Fingers on the screen right now. Two fingers = a pinch, NOT a selection.
   int _pointers = 0;
@@ -54,11 +58,17 @@ class _DragSelectGesturesState extends ConsumerState<DragSelectGestures> {
   bool _select = true;
   bool _dragging = false;
   Offset _lastPosition = Offset.zero;
-  Timer? _autoScroll;
+
+  // Auto-scroll runs on a Ticker: one step per screen refresh (120 per second
+  // on a 120 Hz screen). A Timer of 16 ms capped it at 60 steps per second,
+  // so the grid moved at 60 fps while drag-selecting. It only runs while the
+  // finger is in an edge zone, so a drag in the middle draws no extra frames.
+  late final Ticker _autoScroll = createTicker(_tick);
+  Duration _lastTick = Duration.zero;
 
   @override
   void dispose() {
-    _autoScroll?.cancel();
+    _autoScroll.dispose();
     super.dispose();
   }
 
@@ -89,10 +99,7 @@ class _DragSelectGesturesState extends ConsumerState<DragSelectGestures> {
 
     HapticFeedback.selectionClick();
     _applyUpTo(index);
-    _autoScroll = Timer.periodic(
-      const Duration(milliseconds: 16),
-      (_) => _tick(),
-    );
+    _updateAutoScroll();
   }
 
   void _onMove(LongPressMoveUpdateDetails details) {
@@ -100,12 +107,40 @@ class _DragSelectGesturesState extends ConsumerState<DragSelectGestures> {
     _lastPosition = details.localPosition;
     final index = _indexAt(_lastPosition);
     if (index != null) _applyUpTo(index);
+    _updateAutoScroll();
   }
 
   void _onEnd() {
     _dragging = false;
-    _autoScroll?.cancel();
-    _autoScroll = null;
+    _updateAutoScroll();
+  }
+
+  /// Starts the ticker when the finger enters an edge zone, stops it when
+  /// it leaves (or the drag ends).
+  void _updateAutoScroll() {
+    final needed = _dragging && _edgeSpeed() != 0;
+    if (needed && !_autoScroll.isActive) {
+      _lastTick = Duration.zero;
+      _autoScroll.start();
+    } else if (!needed && _autoScroll.isActive) {
+      _autoScroll.stop();
+    }
+  }
+
+  /// Pixels per second, + = towards the bottom of the content. 0 outside
+  /// the edge zones.
+  double _edgeSpeed() {
+    final y = _lastPosition.dy;
+    if (y < _edgeZone) {
+      return -_maxScrollPerSecond *
+          ((_edgeZone - y) / _edgeZone).clamp(0.0, 1.0);
+    }
+    if (y > widget.viewportHeight - _edgeZone) {
+      return _maxScrollPerSecond *
+          ((y - (widget.viewportHeight - _edgeZone)) / _edgeZone)
+              .clamp(0.0, 1.0);
+    }
+    return 0;
   }
 
   void _applyUpTo(int index) {
@@ -126,18 +161,21 @@ class _DragSelectGesturesState extends ConsumerState<DragSelectGestures> {
     ref.read(photosSelectionControllerProvider.notifier).setIds(next);
   }
 
-  /// Scrolls while the finger is near the top or bottom edge.
-  void _tick() {
+  /// One auto-scroll step per screen refresh, while the finger is near the
+  /// top or bottom edge. The step follows the real time since the last one.
+  void _tick(Duration elapsed) {
+    // Seconds since the last step. The first step of a run and long gaps
+    // (a dropped frame) are capped at one 60 Hz frame, so it never leaps.
+    final seconds = math.min(
+      (elapsed - _lastTick).inMicroseconds / 1e6,
+      1 / 60,
+    );
+    final first = _lastTick == Duration.zero;
+    _lastTick = elapsed;
+    if (first) return;
     if (!_dragging || !widget.controller.hasClients) return;
 
-    final y = _lastPosition.dy;
-    double speed = 0; // + = towards the bottom of the content
-    if (y < _edgeZone) {
-      speed = -_maxScrollPerTick * ((_edgeZone - y) / _edgeZone).clamp(0.0, 1.0);
-    } else if (y > widget.viewportHeight - _edgeZone) {
-      speed = _maxScrollPerTick *
-          ((y - (widget.viewportHeight - _edgeZone)) / _edgeZone).clamp(0.0, 1.0);
-    }
+    final speed = _edgeSpeed() * seconds;
     if (speed == 0) return;
 
     final position = widget.controller.position;
@@ -147,7 +185,12 @@ class _DragSelectGesturesState extends ConsumerState<DragSelectGestures> {
       position.minScrollExtent,
       position.maxScrollExtent,
     );
-    if (target == position.pixels) return;
+    if (target == position.pixels) {
+      // At the end of the list: nothing to scroll. Moving the finger
+      // starts it again (see _onMove).
+      _autoScroll.stop();
+      return;
+    }
     widget.controller.jumpTo(target);
 
     final index = _indexAt(_lastPosition);

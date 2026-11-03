@@ -95,7 +95,10 @@ class _AlbumDetailPageState extends ConsumerState<AlbumDetailPage> {
       },
       child: Scaffold(
         bottomNavigationBar: selecting
-            ? SelectionActionBar(items: albumDisplayItemsProvider(albumId))
+            ? SelectionActionBar(
+                items: albumDisplayItemsProvider(albumId),
+                albumId: albumId,
+              )
             : null,
         body: items.isEmpty
             ? CustomScrollView(

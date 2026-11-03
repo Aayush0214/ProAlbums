@@ -17,4 +17,11 @@ void main() {
   test('change cover path', () {
     expect(AppRoutes.changeCover('all'), '/change-cover/all');
   });
+
+  test('move/copy path, with and without the source album', () {
+    expect(AppRoutes.moveCopy(), AppRoutes.moveCopyPath);
+    final uri = Uri.parse(AppRoutes.moveCopy(fromAlbumId: '-161 &x'));
+    expect(uri.path, AppRoutes.moveCopyPath);
+    expect(uri.queryParameters['from'], '-161 &x');
+  });
 }

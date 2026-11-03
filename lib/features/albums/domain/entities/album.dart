@@ -33,6 +33,14 @@ final class Album {
   /// The newest item, shown as the album picture. null for an empty album.
   final MediaItem? cover;
 
+  /// A real folder on the phone. "All", "Videos" and "Favorites" only
+  /// collect files from many folders: they cannot be renamed, deleted as a
+  /// folder, or be the place a Copy / Move puts files into.
+  bool get isFolder =>
+      kind != AlbumKind.all &&
+      kind != AlbumKind.videos &&
+      kind != AlbumKind.favorites;
+
   Album withCover(MediaItem cover) => Album(
         id: id,
         name: name,

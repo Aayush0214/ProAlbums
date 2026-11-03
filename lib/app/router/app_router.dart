@@ -8,7 +8,9 @@ import 'package:proalbums/features/albums/presentation/pages/album_detail_page.d
 import 'package:proalbums/features/albums/presentation/pages/album_picker_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/albums_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/change_cover_page.dart';
+import 'package:proalbums/features/albums/presentation/pages/move_copy_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/other_albums_page.dart';
+import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/pages/photos_page.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_page_route.dart';
 import 'package:proalbums/features/permissions/presentation/pages/permission_page.dart';
@@ -140,6 +142,19 @@ GoRouter appRouter(Ref ref) {
         parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.pickItems,
         builder: (context, state) => const AlbumPickerPage(),
+      ),
+      // Returns true when something was copied / moved:
+      // context.push<bool>(AppRoutes.moveCopy(), extra: items).
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.moveCopyPath,
+        builder: (context, state) => MoveCopyPage(
+          items: switch (state.extra) {
+            final List<MediaItem> items => items,
+            _ => const <MediaItem>[],
+          },
+          fromAlbumId: state.uri.queryParameters['from'],
+        ),
       ),
       // The swipe list comes from ViewerSession (see open_media_viewer.dart).
       GoRoute(

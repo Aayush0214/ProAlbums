@@ -20,11 +20,14 @@ import java.util.concurrent.Executors
  *  - createFolder: makes the folder (also when it stays empty).
  *  - listFolders: the folders inside Pictures (so empty albums can be shown).
  *  - transfer: Copy (new file in the album) or Move (the file's folder is
- *    changed in MediaStore, so it keeps its id, date and favorite).
+ *    changed in MediaStore, so it keeps its id, date and favorite). An
+ *    existing album's folder is looked up by its bucket id (DCIM/Camera,
+ *    Movies, …); a new / empty album is Pictures/<name>.
  *
- * Move needs write access to files of other apps: with "Media management"
- * (turned on once in Settings) it is silent, otherwise Android asks once
- * per move ("Allow ProAlbums to modify these?").
+ * Move needs write access to files of other apps, so every move goes through
+ * MediaStore.createWriteRequest: with "Media management" (turned on once in
+ * Settings) Android grants it silently, otherwise it asks once per move
+ * ("Allow ProAlbums to modify these?").
  */
 class FolderChannel(private val activity: Activity) :
     MethodChannel.MethodCallHandler {
@@ -35,7 +38,7 @@ class FolderChannel(private val activity: Activity) :
     private class Item(val uri: Uri, val video: Boolean)
 
     private var pendingItems: List<Item>? = null
-    private var pendingFolder: String? = null
+    private var pendingPath: String? = null
     private var pendingResult: MethodChannel.Result? = null
 
     fun register(messenger: BinaryMessenger) {
@@ -191,9 +194,12 @@ class FolderChannel(private val activity: Activity) :
     private fun transfer(call: MethodCall, result: MethodChannel.Result) {
         val ids = call.argument<List<String>>("ids").orEmpty()
         val videos = call.argument<List<Boolean>>("videos").orEmpty()
+        val albumId = call.argument<String>("albumId")
         val folder = call.argument<String>("folder")?.trim().orEmpty()
         val move = call.argument<Boolean>("move") ?: false
-        if (ids.isEmpty() || ids.size != videos.size || folder.isEmpty()) {
+        if (ids.isEmpty() || ids.size != videos.size || folder.isEmpty() ||
+            folder.contains('/') || folder.contains('\\')
+        ) {
             result.error("bad_args", "ids, videos and folder are needed", null)
             return
         }
@@ -206,13 +212,62 @@ class FolderChannel(private val activity: Activity) :
             result.error("bad_ids", "No valid ids", null)
             return
         }
-        File(picturesDir(), folder).mkdirs()
 
-        if (move && !MediaStore.canManageMedia(activity)) {
-            askWrite(items, folder, result)
-            return
+        // Finding the album's folder is a MediaStore query: not on the main thread.
+        worker.execute {
+            val path = albumPath(albumId, folder)
+            if (path == picturesPath(folder)) File(picturesDir(), folder).mkdirs()
+            // Move changes files of other apps (Camera...), so it always asks
+            // Android for write access first. With "Media management" on, the
+            // request is granted at once WITHOUT a dialog; it does NOT allow
+            // writing without asking (a direct update then fails with a
+            // SecurityException, which is why Camera photos would not move).
+            if (move) {
+                main.post { askWrite(items, path, result) }
+            } else {
+                run(items, path, move, result)
+            }
         }
-        run(items, folder, move, result)
+    }
+
+    private fun picturesPath(folder: String) = "Pictures/$folder/"
+
+    /**
+     * The folder (RELATIVE_PATH, e.g. "DCIM/Camera/") of an existing album,
+     * read from any file in it. An album is a MediaStore bucket and can live
+     * anywhere, so it must NOT be guessed as Pictures/<name>: that would make
+     * a second "Camera" folder. A new / empty album has no file to ask, so it
+     * is Pictures/<folder>.
+     */
+    private fun albumPath(albumId: String?, folder: String): String {
+        val bucket = albumId?.toLongOrNull() ?: return picturesPath(folder)
+        try {
+            val args = android.os.Bundle().apply {
+                putString(
+                    android.content.ContentResolver.QUERY_ARG_SQL_SELECTION,
+                    "${MediaStore.MediaColumns.BUCKET_ID} = ?",
+                )
+                putStringArray(
+                    android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+                    arrayOf(bucket.toString()),
+                )
+                putInt(android.content.ContentResolver.QUERY_ARG_LIMIT, 1)
+            }
+            activity.contentResolver.query(
+                MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
+                arrayOf(MediaStore.MediaColumns.RELATIVE_PATH),
+                args,
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val path = cursor.getString(0)
+                    if (!path.isNullOrBlank()) return path
+                }
+            }
+        } catch (error: Exception) {
+            // Cannot ask: use Pictures/<folder> below.
+        }
+        return picturesPath(folder)
     }
 
     private fun baseUri(video: Boolean): Uri =
@@ -221,7 +276,7 @@ class FolderChannel(private val activity: Activity) :
 
     private fun run(
         items: List<Item>,
-        folder: String,
+        path: String,
         move: Boolean,
         result: MethodChannel.Result,
     ) {
@@ -230,7 +285,7 @@ class FolderChannel(private val activity: Activity) :
             var failed = 0
             for (item in items) {
                 val ok = try {
-                    if (move) moveOne(item, folder) else copyOne(item, folder)
+                    if (move) moveOne(item, path) else copyOne(item, path)
                 } catch (error: Exception) {
                     false
                 }
@@ -244,14 +299,14 @@ class FolderChannel(private val activity: Activity) :
         }
     }
 
-    private fun moveOne(item: Item, folder: String): Boolean {
+    private fun moveOne(item: Item, path: String): Boolean {
         val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/$folder")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, path)
         }
         return activity.contentResolver.update(item.uri, values, null, null) > 0
     }
 
-    private fun copyOne(item: Item, folder: String): Boolean {
+    private fun copyOne(item: Item, path: String): Boolean {
         val resolver = activity.contentResolver
         val projection = arrayOf(
             MediaStore.MediaColumns.DISPLAY_NAME,
@@ -273,7 +328,7 @@ class FolderChannel(private val activity: Activity) :
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
             put(MediaStore.MediaColumns.MIME_TYPE, mime)
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/$folder")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, path)
             put(MediaStore.MediaColumns.IS_PENDING, 1)
             taken?.let { put(MediaStore.MediaColumns.DATE_TAKEN, it) }
         }
@@ -298,12 +353,12 @@ class FolderChannel(private val activity: Activity) :
     /** Android's "Allow ProAlbums to modify these files?" dialog. */
     private fun askWrite(
         items: List<Item>,
-        folder: String,
+        path: String,
         result: MethodChannel.Result,
     ) {
         pendingResult?.success(mapOf("status" to "cancelled"))
         pendingItems = items
-        pendingFolder = folder
+        pendingPath = path
         pendingResult = result
         try {
             val request = MediaStore.createWriteRequest(
@@ -323,14 +378,14 @@ class FolderChannel(private val activity: Activity) :
     fun onActivityResult(requestCode: Int, resultCode: Int): Boolean {
         if (requestCode != REQUEST_WRITE) return false
         val items = pendingItems
-        val folder = pendingFolder
+        val path = pendingPath
         val result = pendingResult
         pendingItems = null
-        pendingFolder = null
+        pendingPath = null
         pendingResult = null
-        if (items == null || folder == null || result == null) return true
+        if (items == null || path == null || result == null) return true
         if (resultCode == Activity.RESULT_OK) {
-            run(items, folder, true, result)
+            run(items, path, true, result)
         } else {
             result.success(mapOf("status" to "cancelled"))
         }

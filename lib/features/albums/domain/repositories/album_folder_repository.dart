@@ -1,5 +1,6 @@
 import 'package:proalbums/core/utils/typedefs.dart';
 import 'package:proalbums/features/albums/domain/entities/folder_outcomes.dart';
+import 'package:proalbums/features/albums/domain/entities/transfer_target.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 
 /// The real folders behind the albums: Pictures/(album name).
@@ -24,10 +25,10 @@ abstract interface class AlbumFolderRepository {
   /// trash. On any error all ids come back (nothing is hidden by mistake).
   Future<Set<String>> existingMediaIds(Iterable<String> ids);
 
-  /// Copies or moves [items] into the folder [folderName].
+  /// Copies or moves [items] into the folder of [target].
   FutureResult<TransferResult> transfer(
     List<MediaItem> items,
-    String folderName, {
+    TransferTarget target, {
     required bool move,
   });
 }

@@ -1,5 +1,6 @@
 import 'package:proalbums/core/utils/typedefs.dart';
 import 'package:proalbums/features/albums/domain/entities/folder_outcomes.dart';
+import 'package:proalbums/features/albums/domain/entities/transfer_target.dart';
 import 'package:proalbums/features/albums/domain/repositories/album_folder_repository.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 
@@ -11,8 +12,8 @@ final class TransferToAlbumUseCase {
 
   FutureResult<TransferResult> call(
     List<MediaItem> items,
-    String folderName, {
+    TransferTarget target, {
     required bool move,
   }) =>
-      _repository.transfer(items, folderName, move: move);
+      _repository.transfer(items, target, move: move);
 }

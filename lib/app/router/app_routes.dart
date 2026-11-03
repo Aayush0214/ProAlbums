@@ -14,6 +14,9 @@ abstract final class AppRoutes {
   static const String otherAlbums = '/other-albums';
   static const String pickItems = '/pick-items';
 
+  /// The items go as `extra` (a `List<MediaItem>`): too many for a URL.
+  static const String moveCopyPath = '/move-copy';
+
   // Pages with a parameter. The *Pattern is for the router, the function
   // builds the real path (ids are encoded, so any id is safe).
   static const String albumPattern = '/album/:albumId';
@@ -24,6 +27,11 @@ abstract final class AppRoutes {
   static String album(String id, String name) =>
       '/album/${Uri.encodeComponent(id)}'
       '?${Uri(queryParameters: {'name': name}).query}';
+
+  /// [fromAlbumId]: the album the items come from (not offered as a target).
+  static String moveCopy({String? fromAlbumId}) => fromAlbumId == null
+      ? moveCopyPath
+      : '$moveCopyPath?${Uri(queryParameters: {'from': fromAlbumId}).query}';
 
   static String changeCover(String albumId) =>
       '/change-cover/${Uri.encodeComponent(albumId)}';

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/providers/gallery_rows_provider.dart';
 import 'package:proalbums/features/gallery/presentation/providers/photos_selection_controller.dart';
@@ -37,17 +39,26 @@ Map<SelectionMoreAction, bool> selectionMoreStates({
 }
 
 /// Bottom bar while selecting, like the system gallery: Share, Move/Copy,
-/// Create, Delete, More. Only Share works now; the rest arrive with their own
+/// Create, Delete, More. Create and the More actions arrive with their own
 /// phases (until then they say so).
 class SelectionActionBar extends ConsumerWidget {
-  const SelectionActionBar({this.items, super.key});
+  const SelectionActionBar({this.items, this.albumId, super.key});
 
   /// Where the selected ids are looked up. null = the Photos tab list; an
   /// album passes its own list, so the SAME bar works there.
   final ProviderListenable<List<MediaItem>>? items;
 
+  /// The album being shown (null on the Photos tab). Move/Copy does not
+  /// offer it as a target.
+  final String? albumId;
+
   ProviderListenable<List<MediaItem>> get _items =>
       items ?? photosDisplayItemsProvider;
+
+  List<MediaItem> _selected(WidgetRef ref) {
+    final ids = ref.read(photosSelectionControllerProvider).ids;
+    return ref.read(_items).where((item) => ids.contains(item.id)).toList();
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -76,8 +87,7 @@ class SelectionActionBar extends ConsumerWidget {
               _BarAction(
                 icon: Icons.library_add_outlined,
                 label: 'Move/Copy',
-                onPressed:
-                    none ? null : () => showComingSoon(context, 'Move/Copy'),
+                onPressed: none ? null : () => _moveCopy(context, ref),
               ),
               _BarAction(
                 icon: Icons.edit_outlined,
@@ -99,14 +109,24 @@ class SelectionActionBar extends ConsumerWidget {
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final ids = ref.read(photosSelectionControllerProvider).ids;
-    final items = ref
-        .read(_items)
-        .where((item) => ids.contains(item.id))
-        .toList();
-    final done = await deleteMediaItems(context, ref, items);
+    final done = await deleteMediaItems(context, ref, _selected(ref));
     // Deleted: leave selection mode. Cancelled: the selection stays.
     if (done) ref.read(photosSelectionControllerProvider.notifier).exit();
+  }
+
+  /// Opens the album list (the albums feature, reached only by its route).
+  Future<void> _moveCopy(BuildContext context, WidgetRef ref) async {
+    final items = _selected(ref);
+    if (items.isEmpty) return;
+    // Taken before the await: when every item is moved out of an album, the
+    // album page (and this bar) may be gone when the answer comes back.
+    final selection = ref.read(photosSelectionControllerProvider.notifier);
+    final done = await context.push<bool>(
+      AppRoutes.moveCopy(fromAlbumId: albumId),
+      extra: items,
+    );
+    // Copied / moved: leave selection mode. Closed: the selection stays.
+    if (done ?? false) selection.exit();
   }
 
   Future<void> _share(BuildContext context, WidgetRef ref) async {
