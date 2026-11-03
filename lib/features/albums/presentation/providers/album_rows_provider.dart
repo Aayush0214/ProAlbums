@@ -21,3 +21,22 @@ List<GalleryRow> albumGalleryRows(Ref ref, String albumId) {
     alignToEnd: false,
   );
 }
+
+/// The picker's rows (see albumPickableItems): only pictures when
+/// [imagesOnly].
+@riverpod
+List<GalleryRow> albumPickableRows(
+  Ref ref,
+  String albumId, {
+  bool imagesOnly = false,
+}) {
+  final items = ref.watch(
+    albumPickableItemsProvider(albumId, imagesOnly: imagesOnly),
+  );
+  final columns = ref.watch(albumViewSettingsProvider.select((s) => s.columns));
+  return GalleryRowsBuilder.buildFlat(
+    items: items,
+    columns: columns,
+    alignToEnd: false,
+  );
+}

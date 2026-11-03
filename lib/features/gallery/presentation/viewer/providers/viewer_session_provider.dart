@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
 import 'package:proalbums/features/gallery/presentation/images/media_thumbnail_image.dart';
@@ -16,6 +16,7 @@ final class ViewerSessionData {
     this.albumId,
     this.imageLoader,
     this.videoSource,
+    this.extraActions = const [],
   });
 
   /// The swipe list (the Photos tab list, an album's list, search results).
@@ -33,6 +34,27 @@ final class ViewerSessionData {
 
   /// Where a video is played from: null = the normal way.
   final String Function(MediaItem item)? videoSource;
+
+  /// Buttons the opener adds to the viewer's bar (a preview has no other
+  /// bar), e.g. Convert PDF's "Crop & rotate". The gallery does not know
+  /// what they do.
+  final List<ViewerExtraAction> extraActions;
+}
+
+/// One button of [ViewerSessionData.extraActions].
+@immutable
+final class ViewerExtraAction {
+  const ViewerExtraAction({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+
+  /// Called with the item on screen.
+  final void Function(BuildContext context, MediaItem item) onPressed;
 }
 
 /// WHERE the viewer was opened from.

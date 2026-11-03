@@ -68,9 +68,20 @@ Future<bool> runMediaAction(
       // Like the system gallery: the selection stays after copying.
       return false;
 
+    case MediaAction.convertPdf:
+      // The pdf feature, reached only by its route. Pictures only (the menu
+      // greys it out for videos).
+      final pictures = [
+        for (final item in items)
+          if (!item.isVideo) item,
+      ];
+      if (pictures.isEmpty) return false;
+      await context.push<void>(AppRoutes.convertPdf, extra: pictures);
+      // Like the system gallery: back in the grid, the selection is over.
+      return true;
+
     case MediaAction.create ||
         MediaAction.hide ||
-        MediaAction.pdfPpt ||
         MediaAction.print ||
         MediaAction.setAsWallpaper ||
         MediaAction.googleLens ||

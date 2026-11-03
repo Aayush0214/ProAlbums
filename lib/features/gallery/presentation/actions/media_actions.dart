@@ -16,6 +16,9 @@ enum MediaContext {
 
   /// Recently deleted.
   trash,
+
+  /// Look only, no actions: the pages of a PDF being made (Convert PDF).
+  preview,
 }
 
 /// Every action a selection or the viewer can offer, in ONE list. An action
@@ -30,7 +33,7 @@ enum MediaAction {
   deleteForever('Delete', icon: LucideIcons.trash2, destructive: true),
   hide('Hide'),
   copyToClipboard('Copy to clipboard'),
-  pdfPpt('PDF/PPT'),
+  convertPdf('Convert PDF'),
   print('Print'),
   setAsWallpaper('Set as wallpaper'),
   googleLens('Google Lens'),
@@ -77,18 +80,19 @@ SelectionActions selectionActionsFor(MediaContext context) => switch (context) {
     more: [
       MediaAction.hide,
       MediaAction.copyToClipboard,
-      MediaAction.pdfPpt,
+      MediaAction.convertPdf,
       MediaAction.print,
     ],
   ),
   MediaContext.trash => const SelectionActions(
     bar: [MediaAction.restore, MediaAction.deleteForever],
   ),
+  MediaContext.preview => const SelectionActions(bar: []),
 };
 
 /// Is [action] ON for a selection with pictures and/or videos? Options that
 /// do not apply are greyed out, never hidden (like the system gallery):
-///  - Copy to clipboard, PDF/PPT and Print: ONLY pictures (one video in the
+///  - Copy to clipboard, Convert PDF and Print: ONLY pictures (one video in the
 ///    selection turns them off: they cannot do anything with a video, the
 ///    system gallery's PDF/PPT even says "Images only"),
 ///  - everything else (Hide...): always.
@@ -98,7 +102,7 @@ bool isActionEnabled(
   required bool hasVideo,
 }) => switch (action) {
   MediaAction.copyToClipboard ||
-  MediaAction.pdfPpt ||
+  MediaAction.convertPdf ||
   MediaAction.print => hasImage && !hasVideo,
   _ => true,
 };
@@ -106,7 +110,9 @@ bool isActionEnabled(
 /// The viewer's "More" menu: depends on the screen AND on the item (a video
 /// has its own list).
 List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
-  if (context == MediaContext.trash) return const [];
+  if (context == MediaContext.trash || context == MediaContext.preview) {
+    return const [];
+  }
   if (item.isVideo) {
     return const [
       MediaAction.setAsWallpaper,
@@ -130,22 +136,29 @@ List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
     MediaAction.contactPicture,
     MediaAction.rotate,
     MediaAction.copyToClipboard,
-    MediaAction.pdfPpt,
+    MediaAction.convertPdf,
     MediaAction.screenMirroring,
     MediaAction.print,
   ];
 }
 
 /// The viewer's own bar for a screen, or null = the normal bar (Share, Edit,
-/// Delete, More). Recently deleted only restores or deletes for good.
+/// Delete, More). Recently deleted only restores or deletes for good; a
+/// preview has no bar at all (empty list).
 List<MediaAction>? viewerBarActionsFor(MediaContext context) =>
     switch (context) {
       MediaContext.trash => const [
         MediaAction.restore,
         MediaAction.deleteForever,
       ],
+      MediaContext.preview => const [],
       MediaContext.library || MediaContext.album || MediaContext.search => null,
     };
 
-/// Heart (favourite) in the viewer: not for pictures in the trash.
-bool viewerShowsFavorite(MediaContext context) => context != MediaContext.trash;
+/// Heart (favourite) in the viewer: not for pictures in the trash, not in a
+/// preview.
+bool viewerShowsFavorite(MediaContext context) =>
+    context != MediaContext.trash && context != MediaContext.preview;
+
+/// Info button in the viewer: not in a preview (look only).
+bool viewerShowsInfo(MediaContext context) => context != MediaContext.preview;

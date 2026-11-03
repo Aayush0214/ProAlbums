@@ -42,12 +42,11 @@ TransferToAlbumUseCase transferToAlbumUseCase(Ref ref) =>
     TransferToAlbumUseCase(ref.watch(albumFolderRepositoryProvider));
 
 @Riverpod(keepAlive: true)
-AlbumRepository albumRepository(Ref ref) =>
-    AlbumRepositoryImpl(
-      ref.watch(albumDataSourceProvider),
-      ref.watch(albumFolderRepositoryProvider),
-      ref.watch(favoritesRepositoryProvider),
-    );
+AlbumRepository albumRepository(Ref ref) => AlbumRepositoryImpl(
+  ref.watch(albumDataSourceProvider),
+  ref.watch(albumFolderRepositoryProvider),
+  ref.watch(favoritesRepositoryProvider),
+);
 
 @Riverpod(keepAlive: true)
 GetAlbumsUseCase getAlbumsUseCase(Ref ref) =>
@@ -154,11 +153,28 @@ List<MediaItem> albumDisplayItems(Ref ref, String albumId) {
   // For "oldest first" the older pictures would be added ABOVE, and the grid
   // would jump, so that order waits for the full list).
   final full = ref.watch(albumItemsProvider(albumId)).value;
-  final items = full ??
+  final items =
+      full ??
       (newestFirst
           ? ref.watch(albumFirstItemsProvider(albumId)).value
           : null) ??
       const <MediaItem>[];
 
   return newestFirst ? items : items.reversed.toList(growable: false);
+}
+
+/// What a picker shows of an album: the same list, or only its pictures
+/// when [imagesOnly] (e.g. Convert PDF cannot use videos).
+@riverpod
+List<MediaItem> albumPickableItems(
+  Ref ref,
+  String albumId, {
+  bool imagesOnly = false,
+}) {
+  final items = ref.watch(albumDisplayItemsProvider(albumId));
+  if (!imagesOnly) return items;
+  return [
+    for (final item in items)
+      if (!item.isVideo) item,
+  ];
 }

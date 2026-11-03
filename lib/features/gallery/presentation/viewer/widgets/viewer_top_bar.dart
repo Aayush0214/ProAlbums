@@ -49,6 +49,7 @@ class ViewerTopBar extends ConsumerWidget {
     // The screen the viewer was opened from decides the actions (Recently
     // deleted: no heart, only Restore / Delete).
     final mediaContext = ref.read(viewerSessionProvider).mediaContext;
+    final extraActions = ref.read(viewerSessionProvider).extraActions;
     final own = viewerBarActionsFor(mediaContext);
 
     // A solid bar in the theme's surface colour (light or dark), like the
@@ -92,12 +93,22 @@ class ViewerTopBar extends ConsumerWidget {
                   ),
                   onPressed: () => toggleFavorite(ref, item),
                 ),
-              IconButton(
-                tooltip: 'Info',
-                color: infoActive ? context.colors.activeAccent : onSurface,
-                icon: const Icon(LucideIcons.info),
-                onPressed: onInfo,
-              ),
+              if (viewerShowsInfo(mediaContext))
+                IconButton(
+                  tooltip: 'Info',
+                  color: infoActive ? context.colors.activeAccent : onSurface,
+                  icon: const Icon(LucideIcons.info),
+                  onPressed: onInfo,
+                ),
+              // The opener's own buttons (e.g. Crop & rotate).
+              if (showActions)
+                for (final extra in extraActions)
+                  IconButton(
+                    tooltip: extra.label,
+                    color: onSurface,
+                    icon: Icon(extra.icon),
+                    onPressed: () => extra.onPressed(context, item),
+                  ),
               if (showActions && own != null)
                 for (final action in own)
                   IconButton(

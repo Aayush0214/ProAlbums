@@ -28,7 +28,7 @@ void main() {
         expect(actions.more, [
           MediaAction.hide,
           MediaAction.copyToClipboard,
-          MediaAction.pdfPpt,
+          MediaAction.convertPdf,
           MediaAction.print,
         ]);
       }
@@ -59,9 +59,9 @@ void main() {
       }
     });
 
-    test('pictures + videos: Hide only (PDF/PPT is images only)', () {
+    test('pictures + videos: Hide only (Convert PDF is images only)', () {
       expect(on(MediaAction.hide, image: true, video: true), isTrue);
-      expect(on(MediaAction.pdfPpt, image: true, video: true), isFalse);
+      expect(on(MediaAction.convertPdf, image: true, video: true), isFalse);
       expect(
         on(MediaAction.copyToClipboard, image: true, video: true),
         isFalse,
@@ -71,7 +71,7 @@ void main() {
 
     test('only videos: Hide only', () {
       expect(on(MediaAction.hide, image: false, video: true), isTrue);
-      expect(on(MediaAction.pdfPpt, image: false, video: true), isFalse);
+      expect(on(MediaAction.convertPdf, image: false, video: true), isFalse);
       expect(
         on(MediaAction.copyToClipboard, image: false, video: true),
         isFalse,
@@ -133,8 +133,22 @@ void main() {
 
   test('only delete-for-good is destructive (shown in the error colour)', () {
     expect(
-      [for (final a in MediaAction.values) if (a.destructive) a],
+      [
+        for (final a in MediaAction.values)
+          if (a.destructive) a,
+      ],
       [MediaAction.deleteForever],
     );
+  });
+
+  test('preview (Convert PDF pages): look only, no actions anywhere', () {
+    final image = _item(MediaType.image);
+    expect(selectionActionsFor(MediaContext.preview).bar, isEmpty);
+    expect(selectionActionsFor(MediaContext.preview).more, isEmpty);
+    expect(viewerMoreActionsFor(MediaContext.preview, image), isEmpty);
+    expect(viewerBarActionsFor(MediaContext.preview), isEmpty);
+    expect(viewerShowsFavorite(MediaContext.preview), isFalse);
+    expect(viewerShowsInfo(MediaContext.preview), isFalse);
+    expect(viewerShowsInfo(MediaContext.library), isTrue);
   });
 }

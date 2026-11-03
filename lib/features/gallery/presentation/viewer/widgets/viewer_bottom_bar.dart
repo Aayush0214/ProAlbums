@@ -31,9 +31,8 @@ class ViewerBottomBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Some screens give the viewer their own bar (Recently deleted: Restore,
     // Delete); the others get the normal one.
-    final own = viewerBarActionsFor(
-      ref.read(viewerSessionProvider).mediaContext,
-    );
+    final session = ref.read(viewerSessionProvider);
+    final own = viewerBarActionsFor(session.mediaContext);
     return ColoredBox(
       color: context.colorScheme.surface,
       child: SafeArea(
@@ -54,6 +53,13 @@ class ViewerBottomBar extends ConsumerWidget {
                         onPressed: () =>
                             runViewerAction(context, ref, action, item),
                       ),
+                    // The opener's own buttons (e.g. Crop & rotate).
+                    for (final extra in session.extraActions)
+                      _Action(
+                        icon: extra.icon,
+                        label: extra.label,
+                        onPressed: () => extra.onPressed(context, item),
+                      ),
                   ]
                 : [
                     _Action(
@@ -68,9 +74,7 @@ class ViewerBottomBar extends ConsumerWidget {
                     ),
                     if (item.isVideo && onPlayPause != null)
                       _Action(
-                        icon: isPlaying
-                            ? LucideIcons.pause
-                            : LucideIcons.play,
+                        icon: isPlaying ? LucideIcons.pause : LucideIcons.play,
                         label: isPlaying ? 'Pause' : 'Play',
                         onPressed: onPlayPause!,
                       ),

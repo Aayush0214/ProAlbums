@@ -7,11 +7,12 @@ import 'package:proalbums/core/theme/app_colors.dart';
 ///
 /// Returns true when the action button was pressed. [destructive] paints the
 /// button with the theme's error colour (delete, turn off ...). [cancelLabel]
-/// is the text of the second button ("Not now" ...).
+/// is the text of the second button ("Not now" ...). [message] may be left
+/// out (title only, e.g. "Discard current action?").
 Future<bool?> showConfirmDialog(
   BuildContext context, {
   required String title,
-  required String message,
+  String? message,
   required String confirmLabel,
   String cancelLabel = 'Cancel',
   bool destructive = true,
@@ -30,13 +31,16 @@ Future<bool?> showConfirmDialog(
               textAlign: TextAlign.center,
               style: context.textTheme.headlineSmall,
             ),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: context.textTheme.bodyMedium
-                  ?.copyWith(color: context.colors.textSecondary),
-            ),
+            if (message != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: context.colors.textSecondary,
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,

@@ -5,6 +5,7 @@ analyzer:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
     - "build/**"
+    - "third_party/**"
     - android/**
     - ios/**
     - web/**

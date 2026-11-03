@@ -11,13 +11,20 @@ import 'package:proalbums/features/gallery/presentation/grid/gallery_grid.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_grid_skeleton.dart';
 import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
 import 'package:proalbums/shared/widgets/app_back_button.dart';
+import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 
 /// "Select items": choose the pictures / videos of a new album, from all
 /// Photos or from inside any album. The pictures are on the SHARED grid in
 /// "choose many" mode (checkboxes, drag select, zoom, fast scroll). Returns
 /// the chosen items in the order they were picked (Done), or null (back).
+///
+/// [maxCount]: at most this many can be chosen (null = no limit).
+/// [imagesOnly]: videos are not shown (Convert PDF).
 class AlbumPickerPage extends ConsumerStatefulWidget {
-  const AlbumPickerPage({super.key});
+  const AlbumPickerPage({this.maxCount, this.imagesOnly = false, super.key});
+
+  final int? maxCount;
+  final bool imagesOnly;
 
   @override
   ConsumerState<AlbumPickerPage> createState() => _AlbumPickerPageState();
@@ -55,10 +62,25 @@ class _AlbumPickerPageState extends ConsumerState<AlbumPickerPage> {
       mediaSelectionControllerProvider(_scope).select((s) => s.count),
     );
     final gridAlbumId = _openAlbum?.id ?? kAllAlbumId;
+    // A limit (Convert PDF): picks past it (one tap or a drag) are taken
+    // back, keeping the first ones, and a toast says why.
+    final max = widget.maxCount;
+    if (max != null) {
+      ref.listen(mediaSelectionControllerProvider(_scope), (previous, next) {
+        if (next.count <= max) return;
+        ref
+            .read(mediaSelectionControllerProvider(_scope).notifier)
+            .setIds(next.ids.take(max).toSet());
+        AppToast.of(context).show('You can select up to $max items');
+      });
+    }
 
     return MediaScope(
       id: _scope,
-      items: albumDisplayItemsProvider(gridAlbumId),
+      items: albumPickableItemsProvider(
+        gridAlbumId,
+        imagesOnly: widget.imagesOnly,
+      ),
       pickMode: PickMode.multi,
       child: PopScope(
         // Back inside an album goes back to the album list first.
@@ -128,7 +150,9 @@ class _AlbumPickerPageState extends ConsumerState<AlbumPickerPage> {
   }
 
   Widget _grid(String albumId) {
-    final items = ref.watch(albumDisplayItemsProvider(albumId));
+    final items = ref.watch(
+      albumPickableItemsProvider(albumId, imagesOnly: widget.imagesOnly),
+    );
     final settings = ref.watch(albumViewSettingsProvider);
     if (items.isEmpty) {
       final loading = ref.watch(albumItemsProvider(albumId)).isLoading;
@@ -136,7 +160,7 @@ class _AlbumPickerPageState extends ConsumerState<AlbumPickerPage> {
           ? GalleryGridSkeleton(columns: settings.columns)
           : Center(
               child: Text(
-                'No photos or videos',
+                widget.imagesOnly ? 'No pictures' : 'No photos or videos',
                 style: context.textTheme.bodyLarge?.copyWith(
                   color: context.colors.textSecondary,
                 ),
@@ -148,7 +172,9 @@ class _AlbumPickerPageState extends ConsumerState<AlbumPickerPage> {
       // A new grid (from the top) for every album.
       key: ValueKey(albumId),
       controller: _scroll,
-      rows: ref.watch(albumGalleryRowsProvider(albumId)),
+      rows: ref.watch(
+        albumPickableRowsProvider(albumId, imagesOnly: widget.imagesOnly),
+      ),
       items: items,
       columns: settings.columns,
       reversed: false,

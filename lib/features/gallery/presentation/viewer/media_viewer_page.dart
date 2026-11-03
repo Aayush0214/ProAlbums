@@ -10,6 +10,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/platform/app_orientation.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
+import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/video_playback_controller.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_math.dart';
@@ -106,6 +107,14 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
   }
 
   bool _landscape = false;
+
+  /// Look only (the pages of a PDF being made) with no button from the
+  /// opener: no action bar at all.
+  late final bool _noBar = () {
+    final session = ref.read(viewerSessionProvider);
+    final own = viewerBarActionsFor(session.mediaContext);
+    return (own?.isEmpty ?? false) && session.extraActions.isEmpty;
+  }();
 
   /// Delete the photo / video on screen. A playing video is paused first. When
   /// it is in the trash, the list shrinks and the viewer lands on the
@@ -272,8 +281,9 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
                       onSelect: _selectFromStrip,
                     ),
                   ),
-                  // Landscape: the actions are in the top bar instead.
-                  if (!landscape)
+                  // Landscape: the actions are in the top bar instead. A
+                  // preview (look only) may have no bar.
+                  if (!landscape && !_noBar)
                     ViewerBottomBar(
                       item: current,
                       isPlaying: videoPlaying,
@@ -300,9 +310,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
                       child: Padding(
                         padding: const EdgeInsets.all(12),
                         child: Icon(
-                          videoPlaying
-                              ? LucideIcons.pause
-                              : LucideIcons.play,
+                          videoPlaying ? LucideIcons.pause : LucideIcons.play,
                           size: 30,
                           color: AppColors.mediaBadgeText,
                         ),

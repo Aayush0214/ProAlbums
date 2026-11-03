@@ -13,6 +13,9 @@ import 'package:proalbums/features/albums/presentation/pages/other_albums_page.d
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/pages/photos_page.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_page_route.dart';
+import 'package:proalbums/features/pdf/presentation/pages/convert_pdf_page.dart';
+import 'package:proalbums/features/pdf/presentation/pages/pdf_adjust_image_page.dart';
+import 'package:proalbums/features/pdf/presentation/pages/pdf_page_editor_page.dart';
 import 'package:proalbums/features/permissions/presentation/pages/permission_page.dart';
 import 'package:proalbums/features/permissions/presentation/providers/media_permission_notifier.dart';
 import 'package:proalbums/features/recommended/presentation/pages/for_you_page.dart';
@@ -141,7 +144,32 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.pickItems,
-        builder: (context, state) => const AlbumPickerPage(),
+        builder: (context, state) => AlbumPickerPage(
+          maxCount: int.tryParse(state.uri.queryParameters['max'] ?? ''),
+          imagesOnly: state.uri.queryParameters['images'] == '1',
+        ),
+      ),
+      // Convert PDF: context.push(AppRoutes.convertPdf, extra: pictures).
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.convertPdf,
+        builder: (context, state) => ConvertPdfPage(
+          items: switch (state.extra) {
+            final List<MediaItem> items => items,
+            _ => const <MediaItem>[],
+          },
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.pdfAdjustImage,
+        builder: (context, state) => const PdfAdjustImagePage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.pdfEditPagePattern,
+        builder: (context, state) =>
+            PdfPageEditorPage(pageId: state.pathParameters['pageId']!),
       ),
       // Returns true when something was copied / moved:
       // context.push<bool>(AppRoutes.moveCopy(), extra: items).
