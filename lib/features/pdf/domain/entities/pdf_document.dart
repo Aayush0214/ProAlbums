@@ -78,3 +78,83 @@ final class PdfPageEdit {
   final int width;
   final int height;
 }
+
+/// How pictures are laid out for printing (the "Print" sheet).
+final class PrintLayout {
+  const PrintLayout({this.perSheet = 1, this.scalePercent = 100})
+    : assert(perSheet > 0),
+      assert(scalePercent > 0 && scalePercent <= 100);
+
+  /// "Merge Multiple Pages": pictures on one sheet of paper.
+  static const List<int> perSheetChoices = [1, 2, 4, 9];
+
+  /// "Scale To": 50% .. 100%, in steps of 10.
+  static const int minScale = 50;
+  static const int maxScale = 100;
+  static const int scaleStep = 10;
+
+  final int perSheet;
+
+  /// How big each picture is in its place (100 = as big as fits).
+  final int scalePercent;
+
+  PrintLayout copyWith({int? perSheet, int? scalePercent}) => PrintLayout(
+    perSheet: perSheet ?? this.perSheet,
+    scalePercent: scalePercent ?? this.scalePercent,
+  );
+
+  /// White space around the pictures on a sheet (PDF points, 1/72 inch).
+  /// Merged sheets use less, so the small pictures get the room (like the
+  /// system gallery).
+  double get pageMargin => perSheet == 1 ? 24 : 12;
+
+  /// Space between merged pictures (points).
+  double get gap => perSheet == 1 ? 0 : 4;
+
+  /// The grids [perSheet] pictures can use (columns, rows).
+  List<(int, int)> get _grids => switch (perSheet) {
+    1 => const [(1, 1)],
+    2 => const [(1, 2), (2, 1)],
+    4 => const [(2, 2)],
+    9 => const [(3, 3)],
+    _ => [(1, perSheet)],
+  };
+
+  /// The grid that shows pictures of [aspects] (width / height, in order)
+  /// biggest on a [width] x [height] area (inside the margins): e.g. two
+  /// tall screenshots side by side on a tall sheet, two wide photos one
+  /// above the other.
+  (int columns, int rows) bestGrid({
+    required List<double> aspects,
+    required double width,
+    required double height,
+  }) {
+    var best = _grids.first;
+    var bestArea = -1.0;
+    for (final grid in _grids) {
+      final (columns, rows) = grid;
+      final cellWidth = (width - gap * (columns - 1)) / columns;
+      final cellHeight = (height - gap * (rows - 1)) / rows;
+      var area = 0.0;
+      for (final aspect in aspects.take(columns * rows)) {
+        final a = aspect > 0 ? aspect : 1.0;
+        final w = cellWidth < cellHeight * a ? cellWidth : cellHeight * a;
+        area += w * (w / a);
+      }
+      if (area > bestArea) {
+        best = grid;
+        bestArea = area;
+      }
+    }
+    return best;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is PrintLayout &&
+      other.perSheet == perSheet &&
+      other.scalePercent == scalePercent;
+
+  @override
+  int get hashCode => Object.hash(perSheet, scalePercent);
+}

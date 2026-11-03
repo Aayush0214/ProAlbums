@@ -120,9 +120,14 @@ final class PrintPicturesUseCase {
 
   final PdfRepository _repository;
 
+  /// Each picture's shape (width / height, as shown), for the preview.
+  Future<List<double>> aspects(List<MediaItem> pictures) =>
+      _repository.pictureAspects([for (final item in pictures) item.id]);
+
   FutureResult<bool> call({
     required List<MediaItem> pictures,
     required DateTime now,
+    PrintLayout layout = const PrintLayout(),
     PdfProgress? onProgress,
     void Function()? onReady,
   }) async {
@@ -140,6 +145,7 @@ final class PrintPicturesUseCase {
     return _repository.printPictures(
       imageIds: [for (final item in pictures) item.id],
       jobName: PdfRules.printJobName(now),
+      layout: layout,
       onProgress: onProgress,
       onReady: onReady,
     );

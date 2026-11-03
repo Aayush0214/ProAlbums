@@ -34,14 +34,20 @@ abstract interface class PdfRepository {
   /// Forgets every page edit (a new PDF starts).
   Future<void> clearPageEdits();
 
+  /// Width / height of each picture as it is shown (turned by its EXIF
+  /// orientation), in order; 1 when unknown. For the print preview.
+  Future<List<double>> pictureAspects(List<String> imageIds);
+
   /// Print: reads the pictures (one page each, [onProgress] while reading),
   /// calls [onReady], then opens the phone's print screen named [jobName].
   /// Paper size, orientation, copies and the printer are chosen there; the
   /// pages are made again for every paper choice. true = sent to print (or
-  /// saved as PDF there), false = cancelled.
+  /// saved as PDF there), false = cancelled. [layout] = Merge Multiple
+  /// Pages + Scale To.
   FutureResult<bool> printPictures({
     required List<String> imageIds,
     required String jobName,
+    PrintLayout layout = const PrintLayout(),
     PdfProgress? onProgress,
     void Function()? onReady,
   });

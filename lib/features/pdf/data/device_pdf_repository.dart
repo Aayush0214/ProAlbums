@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:printing/printing.dart';
 import 'package:proalbums/core/error/failures.dart';
 import 'package:proalbums/core/logging/app_logger.dart';
@@ -150,9 +151,31 @@ final class DevicePdfRepository implements PdfRepository {
   }
 
   @override
+  Future<List<double>> pictureAspects(List<String> imageIds) async {
+    final aspects = <double>[];
+    for (final id in imageIds) {
+      try {
+        final asset = await AssetEntity.fromId(id);
+        final width = asset?.orientatedWidth ?? 0;
+        final height = asset?.orientatedHeight ?? 0;
+        aspects.add(width > 0 && height > 0 ? width / height : 1);
+      } on Object catch (error, stackTrace) {
+        AppLogger.e(
+          'Could not read a picture size',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        aspects.add(1);
+      }
+    }
+    return aspects;
+  }
+
+  @override
   FutureResult<bool> printPictures({
     required List<String> imageIds,
     required String jobName,
+    PrintLayout layout = const PrintLayout(),
     PdfProgress? onProgress,
     void Function()? onReady,
   }) async {
@@ -174,8 +197,9 @@ final class DevicePdfRepository implements PdfRepository {
       // or orientation changes.
       final printed = await Printing.layoutPdf(
         name: jobName,
-        onLayout: (format) =>
-            Isolate.run(() => buildPicturesPdfBytes(jpegs, format)),
+        onLayout: (format) => Isolate.run(
+          () => buildPicturesPdfBytes(jpegs, format, layout: layout),
+        ),
       );
       return right(printed);
     } on Object catch (error, stackTrace) {

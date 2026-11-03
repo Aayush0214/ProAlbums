@@ -63,13 +63,21 @@ final class _FakeRepository implements PdfRepository {
   Future<void> clearPageEdits() async {}
 
   @override
+  Future<List<double>> pictureAspects(List<String> imageIds) async => [
+    for (final _ in imageIds) 1,
+  ];
+
+  @override
   FutureResult<bool> printPictures({
     required List<String> imageIds,
     required String jobName,
+    PrintLayout layout = const PrintLayout(),
     PdfProgress? onProgress,
     void Function()? onReady,
   }) async {
-    calls.add('print ${imageIds.join(',')} $jobName');
+    calls.add(
+      'print ${imageIds.join(',')} $jobName ${layout.perSheet}x${layout.scalePercent}',
+    );
     onReady?.call();
     return right(true);
   }
@@ -306,7 +314,7 @@ void main() {
       );
       expect(result.getOrElse((_) => false), isTrue);
       expect(ready, isTrue);
-      expect(repo.calls, ['print 3,1 ProAlbums_20261103_090507']);
+      expect(repo.calls, ['print 3,1 ProAlbums_20261103_090507 1x100']);
     });
 
     test('refuses videos, nothing, and more than the limit', () async {
@@ -340,6 +348,52 @@ void main() {
       final text = String.fromCharCodes(bytes);
       // Letter landscape = 792 x 612 points.
       expect(text, contains('/MediaBox[0 0 792 612]'));
+    });
+  });
+
+  group('Merge Multiple Pages / Scale To', () {
+    final jpeg = Uint8List.fromList(
+      img.encodeJpg(img.Image(width: 40, height: 20)),
+    );
+    int sheets(Uint8List pdf) =>
+        RegExp(r'/Type\s*/Page\b').allMatches(String.fromCharCodes(pdf)).length;
+
+    test('the grid that shows the pictures biggest is chosen', () {
+      (int, int) grid(int perSheet, List<double> aspects) =>
+          PrintLayout(perSheet: perSheet).bestGrid(
+            aspects: aspects,
+            width: 547, // A4 portrait inside 24 pt margins
+            height: 794,
+          );
+      expect(grid(1, [0.5]), (1, 1));
+      // Two tall screenshots: side by side on a tall sheet.
+      expect(grid(2, [0.45, 0.45]), (2, 1));
+      // Two wide photos: one above the other.
+      expect(grid(2, [1.5, 1.5]), (1, 2));
+      expect(grid(4, [1, 1, 1, 1]), (2, 2));
+      expect(grid(9, [1]), (3, 3));
+    });
+
+    test('merged sheets use smaller margins and a thin gap', () {
+      expect(const PrintLayout().pageMargin, 24);
+      expect(const PrintLayout().gap, 0);
+      expect(const PrintLayout(perSheet: 4).pageMargin, 12);
+      expect(const PrintLayout(perSheet: 4).gap, 4);
+    });
+
+    test('pictures share sheets; the last one may be partly empty', () async {
+      final five = List.filled(5, jpeg);
+      Future<int> count(int perSheet) async => sheets(
+        await buildPicturesPdfBytes(
+          five,
+          PdfPageFormat.a4,
+          layout: PrintLayout(perSheet: perSheet, scalePercent: 70),
+        ),
+      );
+      expect(await count(1), 5);
+      expect(await count(2), 3);
+      expect(await count(4), 2);
+      expect(await count(9), 1);
     });
   });
 }

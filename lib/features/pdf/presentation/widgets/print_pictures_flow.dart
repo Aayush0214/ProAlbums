@@ -4,11 +4,13 @@ import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/pdf/domain/entities/pdf_document.dart';
 import 'package:proalbums/features/pdf/presentation/providers/pdf_providers.dart';
 import 'package:proalbums/features/pdf/presentation/widgets/pdf_dialogs.dart';
+import 'package:proalbums/features/pdf/presentation/widgets/print_options_sheet.dart';
 import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 
-/// Print (selection bar More, viewer More): "Preparing to print" with how
-/// many pictures and a bar while they are read, then the phone's own print
-/// screen (printer, copies, paper, orientation, scale, Save as PDF...).
+/// Print (selection bar More, viewer More): the "Print" sheet (Merge
+/// Multiple Pages, Scale To), then "Preparing to print" with how many
+/// pictures and a bar while they are read, then the phone's own print
+/// screen (printer, copies, paper, orientation, Save as PDF...).
 /// Finding and talking to the printer is Android's job, not the app's.
 ///
 /// Videos are left out (the menu greys Print out for them anyway).
@@ -30,6 +32,14 @@ Future<void> printPictures(
     return;
   }
 
+  // Merge Multiple Pages + Scale To first (the print screen has no such
+  // options for other apps).
+  final print = ref.read(printPicturesUseCaseProvider);
+  final aspects = await print.aspects(pictures);
+  if (!context.mounted) return;
+  final layout = await showPrintOptionsSheet(context, aspects: aspects);
+  if (layout == null || !context.mounted) return;
+
   final navigator = Navigator.of(context, rootNavigator: true);
   final total = pictures.length;
   final progress = ValueNotifier<(int, int)>((0, total));
@@ -48,9 +58,10 @@ Future<void> printPictures(
     navigator.pop();
   }
 
-  final result = await ref.read(printPicturesUseCaseProvider)(
+  final result = await print(
     pictures: pictures,
     now: DateTime.now(),
+    layout: layout,
     onProgress: (done, all) => progress.value = (done, all),
     // Closed just before the print screen opens.
     onReady: closeDialog,
