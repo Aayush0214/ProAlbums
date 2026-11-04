@@ -63,6 +63,43 @@ void main() {
     });
   });
 
+  group('Convert to H.264', () {
+    test('1.4 × the original bitrate, so the look stays', () {
+      // 4K HEVC, 10 s, 25 MB ≈ 20 Mbit/s video.
+      const hevc = MediaCompressInfo(
+        width: 3840,
+        height: 2160,
+        sizeBytes: 25000000,
+        durationMs: 10000,
+      );
+      final expected = (25000000 * 8 / 10 - 128000) * 1.4;
+      expect(h264BitrateFor(hevc), closeTo(expected, 1));
+    });
+
+    test('never below what the size needs, never above 60 Mbit/s', () {
+      const tiny = MediaCompressInfo(
+        width: 1920,
+        height: 1080,
+        sizeBytes: 100000,
+        durationMs: 10000,
+      );
+      expect(h264BitrateFor(tiny), 10000000);
+      const huge = MediaCompressInfo(
+        width: 3840,
+        height: 2160,
+        sizeBytes: 500000000,
+        durationMs: 10000,
+      );
+      expect(h264BitrateFor(huge), 60000000);
+    });
+
+    test('only H.264 counts as already standard', () {
+      expect(isH264('video/avc'), isTrue);
+      expect(isH264('video/hevc'), isFalse);
+      expect(isH264(null), isFalse);
+    });
+  });
+
   test('JPEG quality: Lowest 40, Highest 95', () {
     expect(jpegQualityFor(0), 40);
     expect(jpegQualityFor(1), 95);

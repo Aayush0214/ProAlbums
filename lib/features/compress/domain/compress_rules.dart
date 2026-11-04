@@ -116,3 +116,18 @@ String compressedBadgeText(int bytes) {
   if (bytes >= mb) return '${(bytes / mb).toStringAsFixed(1)}M';
   return '${math.max(1, (bytes / kb).round())}K';
 }
+
+/// Convert to H.264: the bitrate that keeps the video's look. H.264 needs
+/// about 1.4× the bits of HEVC for the same picture, so: 1.4 × what the
+/// original uses (never below what its size needs), at most 60 Mbit/s.
+int h264BitrateFor(MediaCompressInfo video) {
+  final seconds = video.durationMs / 1000;
+  final original = seconds <= 0
+      ? 0.0
+      : video.sizeBytes * 8 / seconds - _audioBitrate;
+  final needed = _bitrateFor(video.width * video.height);
+  return math.min(60000000, math.max(original * 1.4, needed)).round();
+}
+
+/// The video is already in the standard format.
+bool isH264(String? mime) => mime == 'video/avc';

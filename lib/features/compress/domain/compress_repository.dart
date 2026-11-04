@@ -51,6 +51,16 @@ abstract interface class CompressRepository {
     required void Function(int percent) onProgress,
   });
 
+  /// The video track's format ("video/avc" = H.264, "video/hevc"…).
+  Future<String?> videoCodec(String id);
+
+  /// Convert to H.264: a copy at the same size and [bitrate].
+  Future<VideoCompressResult> convertToH264(
+    String id, {
+    required int bitrate,
+    required void Function(int percent) onProgress,
+  });
+
   Future<void> cancelVideo();
 }
 

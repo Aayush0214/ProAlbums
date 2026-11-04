@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/compress/domain/compress_repository.dart';
 import 'package:proalbums/features/compress/domain/compress_rules.dart';
+import 'package:proalbums/features/compress/presentation/compress_progress_card.dart';
 import 'package:proalbums/features/compress/presentation/compress_providers.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/images/media_thumbnail_image.dart';
@@ -218,60 +219,14 @@ class _CompressVideoPageState extends ConsumerState<CompressVideoPage> {
               Align(
                 alignment: Alignment.bottomCenter,
                 child: SafeArea(
-                  child: _ProgressCard(percent: _percent, onCancel: _cancel),
+                  child: CompressProgressCard(
+                    title: 'Compressing',
+                    percent: _percent,
+                    onCancel: _cancel,
+                  ),
                 ),
               ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// "Compressing", the bar, "52%", Cancel — on a card like the app's dialogs.
-class _ProgressCard extends StatelessWidget {
-  const _ProgressCard({required this.percent, required this.onCancel});
-
-  final int percent;
-  final VoidCallback onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-      child: Material(
-        color: context.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(28),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 28, 28, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Compressing',
-                textAlign: TextAlign.center,
-                style: context.textTheme.titleLarge,
-              ),
-              const SizedBox(height: 24),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: percent / 100,
-                  minHeight: 4,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text('$percent%', style: context.textTheme.titleMedium),
-              const SizedBox(height: 16),
-              Center(
-                child: TextButton(
-                  onPressed: onCancel,
-                  child: const Text('Cancel'),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

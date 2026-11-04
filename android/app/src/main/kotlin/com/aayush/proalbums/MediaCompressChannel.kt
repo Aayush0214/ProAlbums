@@ -86,11 +86,13 @@ class MediaCompressChannel(private val activity: Activity) :
                 }
             }
             "videoInfo" -> background(result) { id?.let { videoInfo(it) } }
+            "videoCodec" -> background(result) { id?.let { videoCodec(it) } }
             "compressVideo" -> {
+                // No width / height = keep the size (Convert to H.264).
                 val width = call.argument<Number>("width")?.toInt()
                 val height = call.argument<Number>("height")?.toInt()
                 val bitrate = call.argument<Number>("bitrate")?.toInt()
-                if (id == null || width == null || height == null || bitrate == null) {
+                if (id == null || bitrate == null) {
                     result.success(null)
                 } else {
                     compressVideo(id, width, height, bitrate, result)
@@ -326,7 +328,25 @@ class MediaCompressChannel(private val activity: Activity) :
     private var output: File? = null
     private var pending: MethodChannel.Result? = null
 
-    private fun compressVideo(id: Long, width: Int, height: Int, bitrate: Int, result: MethodChannel.Result) {
+    /** The video track's format, e.g. "video/avc" (H.264) or "video/hevc". */
+    private fun videoCodec(id: Long): String? {
+        val extractor = android.media.MediaExtractor()
+        try {
+            activity.contentResolver.openFileDescriptor(videoUri(id), "r")!!.use {
+                extractor.setDataSource(it.fileDescriptor)
+            }
+            for (track in 0 until extractor.trackCount) {
+                val mime = extractor.getTrackFormat(track)
+                    .getString(android.media.MediaFormat.KEY_MIME)
+                if (mime?.startsWith("video/") == true) return mime
+            }
+            return null
+        } finally {
+            extractor.release()
+        }
+    }
+
+    private fun compressVideo(id: Long, width: Int?, height: Int?, bitrate: Int, result: MethodChannel.Result) {
         cancelVideo()
         val uri = videoUri(id)
         val source = source(uri)
@@ -340,14 +360,16 @@ class MediaCompressChannel(private val activity: Activity) :
         output = file
         pending = result
 
-        val edited = EditedMediaItem.Builder(MediaItem.fromUri(uri))
-            .setEffects(
+        val builder = EditedMediaItem.Builder(MediaItem.fromUri(uri))
+        if (width != null && height != null) {
+            builder.setEffects(
                 Effects(
                     emptyList(),
                     listOf(Presentation.createForWidthAndHeight(width, height, Presentation.LAYOUT_SCALE_TO_FIT)),
                 ),
             )
-            .build()
+        }
+        val edited = builder.build()
         val job = Transformer.Builder(activity)
             .setVideoMimeType(MimeTypes.VIDEO_H264)
             .setEncoderFactory(

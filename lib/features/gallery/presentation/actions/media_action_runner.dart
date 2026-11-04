@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/features/compress/presentation/compress_flow.dart';
+import 'package:proalbums/features/compress/presentation/convert_h264_flow.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_edit_flows.dart';
@@ -123,10 +124,14 @@ Future<bool> runMediaAction(
       await compressMediaItem(context, ref, items.first);
       return false;
 
+    case MediaAction.convertToH264:
+      // An H.264 copy at the same size; the viewer then shows it.
+      await convertVideoToH264(context, ref, items.first);
+      return false;
+
     case MediaAction.create ||
         MediaAction.setAsWallpaper ||
-        MediaAction.slideshow ||
-        MediaAction.convertToH264:
+        MediaAction.slideshow:
       // Each one is switched on by the phase that builds it.
       showComingSoon(context, action.label);
       return false;

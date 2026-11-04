@@ -86,7 +86,35 @@ final class MethodChannelCompressRepository implements CompressRepository {
     String id,
     VideoCompressOption option, {
     required void Function(int percent) onProgress,
-  }) async {
+  }) => _encode({
+    'id': id,
+    'width': option.width,
+    'height': option.height,
+    'bitrate': option.bitrate,
+  }, onProgress);
+
+  @override
+  Future<VideoCompressResult> convertToH264(
+    String id, {
+    required int bitrate,
+    required void Function(int percent) onProgress,
+  }) => _encode({'id': id, 'bitrate': bitrate}, onProgress);
+
+  @override
+  Future<String?> videoCodec(String id) async {
+    try {
+      return await _channel.invokeMethod<String>('videoCodec', {'id': id});
+    } on Object catch (error, stackTrace) {
+      AppLogger.e('videoCodec failed', error: error, stackTrace: stackTrace);
+      return null;
+    }
+  }
+
+  /// Both make an H.264 copy (the same native call); no size = same size.
+  Future<VideoCompressResult> _encode(
+    Map<String, Object?> arguments,
+    void Function(int percent) onProgress,
+  ) async {
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'compressProgress') {
         final percent = (call.arguments as Map?)?['percent'];
@@ -96,12 +124,7 @@ final class MethodChannelCompressRepository implements CompressRepository {
     try {
       final map = await _channel.invokeMapMethod<String, Object?>(
         'compressVideo',
-        {
-          'id': id,
-          'width': option.width,
-          'height': option.height,
-          'bitrate': option.bitrate,
-        },
+        arguments,
       );
       if (map?['cancelled'] == true) return const VideoCompressCancelled();
       final copy = _copyOf(map);
