@@ -129,9 +129,12 @@ Future<bool> runMediaAction(
       await convertVideoToH264(context, ref, items.first);
       return false;
 
-    case MediaAction.create ||
-        MediaAction.setAsWallpaper ||
-        MediaAction.slideshow:
+    case MediaAction.slideshow:
+      // From the picture on screen; the viewer then shows where it stopped.
+      await context.push<void>(AppRoutes.slideshow, extra: items.first.id);
+      return false;
+
+    case MediaAction.create || MediaAction.setAsWallpaper:
       // Each one is switched on by the phase that builds it.
       showComingSoon(context, action.label);
       return false;

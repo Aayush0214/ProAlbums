@@ -42,6 +42,9 @@ abstract final class AppRoutes {
   /// CompressVideoRequest.
   static const String compressVideo = '/compress-video';
 
+  /// Slideshow from the viewer; `extra` is the id of the picture to start at.
+  static const String slideshow = '/slideshow';
+
   // Pages with a parameter. The *Pattern is for the router, the function
   // builds the real path (ids are encoded, so any id is safe).
   static const String albumPattern = '/album/:albumId';

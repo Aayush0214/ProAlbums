@@ -13,6 +13,7 @@ import 'package:proalbums/features/albums/presentation/pages/other_albums_page.d
 import 'package:proalbums/features/compress/presentation/compress_video_page.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/pages/photos_page.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/slideshow_page.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/video_player_page.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_page_route.dart';
 import 'package:proalbums/features/pdf/presentation/pages/convert_pdf_page.dart';
@@ -245,6 +246,13 @@ GoRouter appRouter(Ref ref) {
         path: AppRoutes.compressVideo,
         builder: (context, state) =>
             CompressVideoPage(request: state.extra! as CompressVideoRequest),
+      ),
+      // Slideshow from the viewer (its list, from the picture on screen).
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.slideshow,
+        builder: (context, state) =>
+            SlideshowPage(startId: state.extra! as String),
       ),
     ],
   );

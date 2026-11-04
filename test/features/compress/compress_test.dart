@@ -72,7 +72,7 @@ void main() {
         sizeBytes: 25000000,
         durationMs: 10000,
       );
-      final expected = (25000000 * 8 / 10 - 128000) * 1.4;
+      const expected = (25000000 * 8 / 10 - 128000) * 1.4;
       expect(h264BitrateFor(hevc), closeTo(expected, 1));
     });
 
