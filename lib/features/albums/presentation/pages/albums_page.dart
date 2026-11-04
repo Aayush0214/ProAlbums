@@ -24,7 +24,6 @@ import 'package:proalbums/features/permissions/presentation/widgets/limited_acce
 import 'package:proalbums/features/storage/presentation/widgets/storage_card.dart';
 import 'package:proalbums/features/trash/presentation/widgets/recently_deleted_row.dart';
 import 'package:proalbums/shared/shell/shell_bottom_bar_provider.dart';
-import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
 
 enum _AlbumsMenu { select, settings }
@@ -67,7 +66,8 @@ class AlbumsPage extends ConsumerWidget {
       IconButton(
         tooltip: 'Search',
         icon: const Icon(LucideIcons.search),
-        onPressed: () => showComingSoon(context, 'Search'),
+        // The Search tab (its branch of the bottom navigation).
+        onPressed: () => context.go(AppRoutes.search),
       ),
       IconButton(
         tooltip: 'New album',

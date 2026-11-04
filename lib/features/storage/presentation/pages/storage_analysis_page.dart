@@ -38,27 +38,31 @@ class StorageAnalysisPage extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.only(top: 20, bottom: 28),
-                child: Center(child: StorageDonut(usage: usage, size: ring)),
+                child: Center(
+                  child: StorageDonut(usage: usage, size: ring),
+                ),
               ),
             ),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverGrid.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  mainAxisExtent: 112,
-                ),
-                itemCount: _kinds.length,
-                itemBuilder: (context, index) => _KindCard(
-                  kind: _kinds[index],
-                  bytes: _bytesOf(usage, _kinds[index]),
-                  share: usage.total == 0
-                      ? 0
-                      : _bytesOf(usage, _kinds[index]) / usage.total,
+              sliver: _KindGrid(usage: usage, kinds: _kinds),
+            ),
+            // Where the pictures and videos are: part of the numbers above,
+            // not extra space.
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
+                child: Text(
+                  'By folder',
+                  style: context.textTheme.titleMedium?.copyWith(
+                    color: context.colors.textSecondary,
+                  ),
                 ),
               ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: _KindGrid(usage: usage, kinds: _folders),
             ),
           ],
           SliverToBoxAdapter(
@@ -74,18 +78,45 @@ class StorageAnalysisPage extends ConsumerWidget {
     StorageKind.videos,
     StorageKind.screenshots,
     StorageKind.trash,
+    StorageKind.hidden,
     StorageKind.other,
     StorageKind.free,
   ];
 
-  static int _bytesOf(StorageUsage u, StorageKind kind) => switch (kind) {
-        StorageKind.photos => u.photos,
-        StorageKind.videos => u.videos,
-        StorageKind.screenshots => u.screenshots,
-        StorageKind.trash => u.trash,
-        StorageKind.other => u.other,
-        StorageKind.free => u.free,
-      };
+  static const _folders = [
+    StorageKind.camera,
+    StorageKind.whatsapp,
+    StorageKind.downloads,
+  ];
+}
+
+/// Two columns of [_KindCard]s, one per kind.
+class _KindGrid extends StatelessWidget {
+  const _KindGrid({required this.usage, required this.kinds});
+
+  final StorageUsage usage;
+  final List<StorageKind> kinds;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverGrid.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        mainAxisExtent: 112,
+      ),
+      itemCount: kinds.length,
+      itemBuilder: (context, index) {
+        final bytes = usage.bytesOf(kinds[index]);
+        return _KindCard(
+          kind: kinds[index],
+          bytes: bytes,
+          share: usage.total == 0 ? 0 : bytes / usage.total,
+        );
+      },
+    );
+  }
 }
 
 class _KindCard extends StatelessWidget {
@@ -119,17 +150,25 @@ class _KindCard extends StatelessWidget {
             Row(
               children: [
                 DecoratedBox(
-                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.all(7),
-                    child: Icon(storageIconOf(kind), size: 16, color: Colors.white),
+                    child: Icon(
+                      storageIconOf(kind),
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 const Spacer(),
                 Text(
                   formatPercent(share),
-                  style: context.textTheme.labelMedium
-                      ?.copyWith(color: context.colors.textSecondary),
+                  style: context.textTheme.labelMedium?.copyWith(
+                    color: context.colors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -138,14 +177,16 @@ class _KindCard extends StatelessWidget {
               storageLabelOf(kind),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: context.textTheme.bodyMedium
-                  ?.copyWith(color: context.colors.textSecondary),
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.colors.textSecondary,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
               formatBytes(bytes),
-              style: context.textTheme.titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w800),
+              style: context.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ],
         ),

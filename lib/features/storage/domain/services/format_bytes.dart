@@ -1,16 +1,19 @@
-/// 1536 -> "1.5 KB", 5 * 1024^3 -> "5.0 GB". Units are 1024 based, like the
-/// phone's own storage screen shows them. Pure, so it is tested.
+/// 1500 -> "1.5 KB", 128 000 000 000 -> "128 GB". Units are 1000 based,
+/// like Android's Settings and the phone's file manager (a "128 GB" phone
+/// shows 128 GB, not 119). Pure, so it is tested.
 String formatBytes(int bytes) {
-  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1000) return '$bytes B';
   const units = ['KB', 'MB', 'GB', 'TB'];
-  var value = bytes / 1024;
+  var value = bytes / 1000;
   var unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
     unit++;
   }
-  // 100 GB and more: no decimals ("237 GB"); smaller: one ("5.0 GB").
-  final text = value >= 100 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+  // 100 GB and more: no decimals ("128 GB"); smaller: one ("62.4 GB").
+  final text = value >= 100
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
   return '$text ${units[unit]}';
 }
 

@@ -10,8 +10,9 @@ import 'package:proalbums/features/storage/domain/repositories/storage_repositor
 final class MethodChannelStorageRepository implements StorageRepository {
   const MethodChannelStorageRepository();
 
-  static const MethodChannel _channel =
-      MethodChannel('com.aayush.proalbums/storage');
+  static const MethodChannel _channel = MethodChannel(
+    'com.aayush.proalbums/storage',
+  );
 
   @override
   FutureResult<StorageUsage> getUsage() async {
@@ -26,10 +27,18 @@ final class MethodChannelStorageRepository implements StorageRepository {
           videos: read('videos'),
           screenshots: read('screenshots'),
           trash: read('trash'),
+          hidden: read('hidden'),
+          camera: read('camera'),
+          whatsapp: read('whatsapp'),
+          downloads: read('downloads'),
         ),
       );
     } on Object catch (error, stackTrace) {
-      AppLogger.e('Could not read the storage', error: error, stackTrace: stackTrace);
+      AppLogger.e(
+        'Could not read the storage',
+        error: error,
+        stackTrace: stackTrace,
+      );
       return left<Failure, StorageUsage>(
         const MediaFailure('Could not read the storage.'),
       );

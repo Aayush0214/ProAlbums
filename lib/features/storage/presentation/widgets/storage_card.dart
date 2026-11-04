@@ -54,7 +54,7 @@ class StorageCard extends ConsumerWidget {
                           // small screen / big font instead of overflowing.
                           Expanded(
                             child: Text(
-                              '${formatBytes(usage.used)} used of '
+                              '${formatBytes(usage.free)} free of '
                               '${formatBytes(usage.total)}',
                               textAlign: TextAlign.end,
                               maxLines: 1,

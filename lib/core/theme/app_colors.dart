@@ -147,6 +147,10 @@ abstract final class AppColors {
   static const Color storageScreenshots = Color(0xFF06B6D4);
   static const Color storageTrash = Color(0xFFF43F5E);
   static const Color storageOther = Color(0xFF64748B);
+  static const Color storageHidden = Color(0xFFF59E0B);
+  static const Color storageCamera = Color(0xFF3B82F6);
+  static const Color storageWhatsapp = Color(0xFF22C55E);
+  static const Color storageDownloads = Color(0xFFF97316);
 }
 
 /// Custom ThemeExtension so every screen can access Stitch's exact surface &

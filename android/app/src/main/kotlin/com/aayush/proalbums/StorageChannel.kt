@@ -1,5 +1,6 @@
 package com.aayush.proalbums
 
+import android.app.usage.StorageStatsManager
 import android.content.ContentResolver
 import android.content.Context
 import android.os.Bundle
@@ -7,6 +8,7 @@ import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.os.StatFs
+import android.os.storage.StorageManager
 import android.provider.MediaStore
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
@@ -41,15 +43,32 @@ class StorageChannel(private val context: Context) : MethodChannel.MethodCallHan
     private fun usage(result: MethodChannel.Result) {
         worker.execute {
             val answer = try {
-                val stat = StatFs(Environment.getExternalStorageDirectory().path)
+                // Like Settings and the Files app: the whole storage as sold
+                // (128 GB, the system partition included) and what is free.
+                // StatFs saw only the data partition (~115 GB of 128).
+                val stats = context.getSystemService(StorageStatsManager::class.java)
+                val total: Long
+                val free: Long
+                if (stats != null) {
+                    total = stats.getTotalBytes(StorageManager.UUID_DEFAULT)
+                    free = stats.getFreeBytes(StorageManager.UUID_DEFAULT)
+                } else {
+                    val stat = StatFs(Environment.getDataDirectory().path)
+                    total = stat.totalBytes
+                    free = stat.availableBytes
+                }
                 val sizes = mediaSizes()
                 mapOf(
-                    "total" to stat.totalBytes,
-                    "free" to stat.availableBytes,
+                    "total" to total,
+                    "free" to free,
                     "photos" to sizes[0],
                     "videos" to sizes[1],
                     "screenshots" to sizes[2],
                     "trash" to sizes[3],
+                    "camera" to sizes[4],
+                    "whatsapp" to sizes[5],
+                    "downloads" to sizes[6],
+                    "hidden" to hiddenSize(),
                 )
             } catch (error: Exception) {
                 null
@@ -61,12 +80,19 @@ class StorageChannel(private val context: Context) : MethodChannel.MethodCallHan
         }
     }
 
-    /** [photos, videos, screenshots, trash] in bytes. */
+    /**
+     * [photos, videos, screenshots, trash, camera, whatsapp, downloads] in
+     * bytes. The last three are WHERE pictures / videos are (they are also in
+     * photos / videos / screenshots), trash not counted.
+     */
     private fun mediaSizes(): LongArray {
         var photos = 0L
         var videos = 0L
         var screenshots = 0L
         var trash = 0L
+        var camera = 0L
+        var whatsapp = 0L
+        var downloads = 0L
 
         val args = Bundle().apply {
             // Also the items that are in the trash.
@@ -94,17 +120,43 @@ class StorageChannel(private val context: Context) : MethodChannel.MethodCallHan
             val trashed = c.getColumnIndexOrThrow(projection[3])
             while (c.moveToNext()) {
                 val bytes = c.getLong(size)
+                val folder = c.getString(path) ?: ""
+                if (c.getInt(trashed) == 1) {
+                    trash += bytes
+                    continue
+                }
                 when {
-                    c.getInt(trashed) == 1 -> trash += bytes
                     c.getInt(type) == MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO ->
                         videos += bytes
-                    (c.getString(path) ?: "").contains("screenshots", ignoreCase = true) ->
+                    folder.contains("screenshots", ignoreCase = true) ->
                         screenshots += bytes
                     else -> photos += bytes
                 }
+                when {
+                    folder.startsWith("DCIM/Camera", ignoreCase = true) -> camera += bytes
+                    // Android/media/com.whatsapp/WhatsApp/Media/… (and the old
+                    // WhatsApp/ folder).
+                    folder.contains("WhatsApp", ignoreCase = true) -> whatsapp += bytes
+                    folder.startsWith("Download", ignoreCase = true) -> downloads += bytes
+                }
             }
         }
-        return longArrayOf(photos, videos, screenshots, trash)
+        return longArrayOf(photos, videos, screenshots, trash, camera, whatsapp, downloads)
+    }
+
+    /** The private vault's encrypted files (Documents/ProAlbums Vault/). */
+    private fun hiddenSize(): Long {
+        var total = 0L
+        context.contentResolver.query(
+            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
+            arrayOf(MediaStore.MediaColumns.SIZE),
+            "${MediaStore.MediaColumns.RELATIVE_PATH} = ?",
+            arrayOf("Documents/ProAlbums Vault/"),
+            null,
+        )?.use { c ->
+            while (c.moveToNext()) total += c.getLong(0)
+        }
+        return total
     }
 
     private companion object {

@@ -41,7 +41,7 @@ class StorageDonut extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  formatBytes(usage.used),
+                  formatBytes(usage.free),
                   style: context.textTheme.headlineLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                     fontSize: 32,
@@ -50,7 +50,7 @@ class StorageDonut extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Used of ${formatBytes(usage.total)}',
+                  'Free of ${formatBytes(usage.total)}',
                   style: context.textTheme.bodyMedium?.copyWith(
                     color: context.colors.textSecondary,
                     fontWeight: FontWeight.w500,
