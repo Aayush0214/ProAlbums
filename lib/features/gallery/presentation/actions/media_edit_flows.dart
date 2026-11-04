@@ -103,6 +103,23 @@ Future<void> setAsContactPhoto(
   }
 }
 
+/// Viewer > Edit: the phone's own editor; what it saves shows up in the
+/// gallery by itself (the library notices the new file).
+Future<void> openInEditor(
+  BuildContext context,
+  WidgetRef ref,
+  MediaItem item,
+) async {
+  final toast = AppToast.of(context);
+  if (!await ref.read(mediaEditRepositoryProvider).openEditor(item)) {
+    toast.show(
+      item.isVideo
+          ? 'No video editor on this phone'
+          : 'No photo editor on this phone',
+    );
+  }
+}
+
 /// "Rename": bold title, the name in a field with an X that empties it,
 /// then Cancel / OK.
 ///

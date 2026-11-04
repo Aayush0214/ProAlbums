@@ -40,6 +40,9 @@ final class MethodChannelMediaEditRepository implements MediaEditRepository {
   @override
   Future<bool> setAsContactPhoto(MediaItem item) => _open('contactPhoto', item);
 
+  @override
+  Future<bool> openEditor(MediaItem item) => _open('openEditor', item);
+
   Future<MediaEditOutcome> _change(
     String method,
     Map<String, Object?> arguments,

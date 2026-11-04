@@ -33,6 +33,11 @@ abstract interface class MediaEditRepository {
   /// Android's "set as contact photo" (the Contacts app picks the contact and
   /// crops). false = no app can do it.
   Future<bool> setAsContactPhoto(MediaItem item);
+
+  /// Viewer > Edit: the phone's own editor (iQOO: vivo Gallery's; Google
+  /// Photos…). It saves a new picture; the original is never changed by it.
+  /// false = no editor on this phone.
+  Future<bool> openEditor(MediaItem item);
 }
 
 /// Characters a file name may not hold on Android's shared storage.

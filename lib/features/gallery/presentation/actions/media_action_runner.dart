@@ -134,7 +134,7 @@ Future<bool> runMediaAction(
       await context.push<void>(AppRoutes.slideshow, extra: items.first.id);
       return false;
 
-    case MediaAction.create || MediaAction.setAsWallpaper:
+    case MediaAction.create:
       // Each one is switched on by the phase that builds it.
       showComingSoon(context, action.label);
       return false;

@@ -26,6 +26,7 @@ import java.util.concurrent.Executors
  *    the system gallery, the original itself turns). JPEG / PNG / WebP only:
  *    "unsupported" otherwise.
  *  - googleLens: hands the picture to Google Lens (the Google app).
+ *  - openEditor: the phone's own editor ("Edit"; iQOO: vivo Gallery).
  *  - contactPhoto: Android's "set as contact photo": the Contacts app shows
  *    the contacts, then its own crop screen.
  *
@@ -78,6 +79,7 @@ class MediaEditChannel(private val activity: Activity) :
             }
             "googleLens" -> result.success(googleLens(uri))
             "contactPhoto" -> result.success(contactPhoto(uri))
+            "openEditor" -> result.success(openEditor(uri))
             else -> result.notImplemented()
         }
     }
@@ -235,6 +237,27 @@ class MediaEditChannel(private val activity: Activity) :
             }
         }
         return false
+    }
+
+    /**
+     * Viewer > Edit: the phone's own editors (iQOO: vivo Gallery's editor,
+     * Google Photos…) through Android's standard "Edit" request; Android shows
+     * its "Open with" list (with "Always"). Read access only: an editor saves
+     * its result as a new picture, the original cannot be changed from here.
+     * true when an editor opened.
+     */
+    private fun openEditor(uri: Uri): Boolean {
+        val mime = info(uri)?.mime ?: "image/*"
+        val intent = Intent(Intent.ACTION_EDIT).apply {
+            setDataAndType(uri, mime)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        return try {
+            activity.startActivity(intent)
+            true
+        } catch (error: ActivityNotFoundException) {
+            false
+        }
     }
 
     /** true when the Contacts app (or the "Set as" chooser) opened. */

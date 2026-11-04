@@ -38,7 +38,6 @@ enum MediaAction {
   copyToClipboard('Copy to clipboard'),
   convertPdf('Convert PDF'),
   print('Print'),
-  setAsWallpaper('Set as wallpaper'),
   googleLens('Google Lens'),
   rename('Rename'),
   compressSize('Compress size'),
@@ -126,7 +125,6 @@ List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
   }
   if (item.isVideo) {
     return const [
-      MediaAction.setAsWallpaper,
       MediaAction.moveCopy,
       MediaAction.hide,
       MediaAction.rename,
@@ -136,7 +134,6 @@ List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
     ];
   }
   return const [
-    MediaAction.setAsWallpaper,
     MediaAction.googleLens,
     MediaAction.moveCopy,
     MediaAction.hide,

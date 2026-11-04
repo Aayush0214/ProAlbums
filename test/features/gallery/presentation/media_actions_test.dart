@@ -81,26 +81,29 @@ void main() {
   });
 
   group('viewer More menu', () {
-    test('a photo has 12 options (no Screen Mirroring), starting like the system gallery', () {
+    test('a photo has 11 options (no Screen Mirroring, no wallpaper)', () {
       final actions = viewerMoreActionsFor(
         MediaContext.library,
         _item(MediaType.image),
       );
-      expect(actions, hasLength(12));
-      expect(actions.first, MediaAction.setAsWallpaper);
+      expect(actions, hasLength(11));
+      expect(actions.first, MediaAction.googleLens);
       expect(actions, contains(MediaAction.rotate));
       expect(actions, isNot(contains(MediaAction.convertToH264)));
     });
 
-    test('a video has its own 7 options (no Screen Mirroring)', () {
-      final actions = viewerMoreActionsFor(
-        MediaContext.album,
-        _item(MediaType.video),
-      );
-      expect(actions, hasLength(7));
-      expect(actions, contains(MediaAction.convertToH264));
-      expect(actions, isNot(contains(MediaAction.rotate)));
-    });
+    test(
+      'a video has its own 6 options (no Screen Mirroring, no wallpaper)',
+      () {
+        final actions = viewerMoreActionsFor(
+          MediaContext.album,
+          _item(MediaType.video),
+        );
+        expect(actions, hasLength(6));
+        expect(actions, contains(MediaAction.convertToH264));
+        expect(actions, isNot(contains(MediaAction.rotate)));
+      },
+    );
 
     test('Recently deleted: no More menu', () {
       expect(

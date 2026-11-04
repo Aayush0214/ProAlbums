@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
+import 'package:proalbums/features/gallery/presentation/actions/media_edit_flows.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_actions.dart';
 import 'package:proalbums/shared/widgets/app_snack_bar.dart';
@@ -84,7 +85,7 @@ class ViewerBottomBar extends ConsumerWidget {
                     _Action(
                       icon: LucideIcons.squarePen,
                       label: 'Edit',
-                      onPressed: () => showComingSoon(context, 'Edit'),
+                      onPressed: () => openInEditor(context, ref, item),
                     ),
                     if (item.isVideo && onPlayPause != null)
                       _Action(
