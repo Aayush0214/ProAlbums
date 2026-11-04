@@ -3,6 +3,7 @@ package com.aayush.proalbums
 import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
+import com.aayush.proalbums.vault.VaultChannel
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 
@@ -30,6 +31,7 @@ class MainActivity : FlutterActivity() {
         StorageChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         ClipboardChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         DocumentChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
+        VaultChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     @Deprecated("Flutter still delivers system-screen results this way")

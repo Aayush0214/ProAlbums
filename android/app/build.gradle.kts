@@ -47,3 +47,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Computer-side tests of the vault's encryption (android/app/src/test).
+    testImplementation("junit:junit:4.13.2")
+}

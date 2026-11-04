@@ -1,0 +1,126 @@
+import 'package:flutter/services.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:proalbums/core/error/failures.dart';
+import 'package:proalbums/core/logging/app_logger.dart';
+import 'package:proalbums/core/utils/typedefs.dart';
+import 'package:proalbums/features/vault/domain/entities/vault_status.dart';
+import 'package:proalbums/features/vault/domain/repositories/vault_repository.dart';
+
+/// Talks to VaultChannel.kt (Android only).
+final class MethodChannelVaultRepository implements VaultRepository {
+  const MethodChannelVaultRepository();
+
+  static const MethodChannel _channel = MethodChannel(
+    'com.aayush.proalbums/vault',
+  );
+
+  /// One call; any platform error becomes a SecurityFailure with a short,
+  /// safe message (the details are only logged, never shown).
+  Future<Result<T>> _call<T>(
+    String method,
+    T Function(Object? value) read, {
+    Map<String, Object?>? arguments,
+    String failure = 'The private vault is not available right now.',
+  }) async {
+    try {
+      final value = await _channel.invokeMethod<Object?>(method, arguments);
+      return right(read(value));
+    } on Object catch (error, stackTrace) {
+      // Never log PINs, answers or keys: only the method and the error code.
+      AppLogger.e(
+        'Vault $method failed: '
+        '${error is PlatformException ? error.code : error.runtimeType}',
+        stackTrace: stackTrace,
+      );
+      return left(SecurityFailure(failure));
+    }
+  }
+
+  static VaultCheck _check(Object? value) {
+    final map = (value as Map<Object?, Object?>?) ?? const {};
+    return VaultCheck(
+      ok: map['ok'] == true,
+      wait: Duration(milliseconds: (map['waitMillis'] as num?)?.toInt() ?? 0),
+    );
+  }
+
+  @override
+  FutureResult<VaultStatus> status() => _call('status', (value) {
+    final map = (value as Map<Object?, Object?>?) ?? const {};
+    return VaultStatus(
+      created: map['created'] == true,
+      passwordEnabled: map['passwordEnabled'] == true,
+      hasPin: map['hasPin'] == true,
+      recoveryKeySaved: map['recoveryKeySaved'] == true,
+      unlocked: map['unlocked'] == true,
+      wait: Duration(milliseconds: (map['waitMillis'] as num?)?.toInt() ?? 0),
+    );
+  });
+
+  @override
+  FutureResult<String> create() => _call(
+    'create',
+    (value) => value! as String,
+    failure: 'Could not create the private vault.',
+  );
+
+  @override
+  FutureResult<Unit> confirmRecoveryKeySaved() =>
+      _call('confirmRecoveryKeySaved', (_) => unit);
+
+  @override
+  FutureResult<bool> unlockWithoutPassword() =>
+      _call('unlockWithoutPassword', (value) => value == true);
+
+  @override
+  FutureResult<bool> unlockAfterBiometric() =>
+      _call('unlockAfterBiometric', (value) => value == true);
+
+  @override
+  Future<void> lock() async {
+    await _call('lock', (_) => unit);
+  }
+
+  @override
+  FutureResult<Unit> setPinAndAnswers({
+    required String pin,
+    required List<String> answers,
+  }) => _call(
+    'setPinAndAnswers',
+    (_) => unit,
+    arguments: {'pin': pin, 'answers': answers},
+    failure: 'Could not set the privacy password.',
+  );
+
+  @override
+  FutureResult<VaultCheck> verifyPin(String pin) =>
+      _call('verifyPin', _check, arguments: {'pin': pin});
+
+  @override
+  FutureResult<VaultCheck> verifyAnswers(List<String> answers) =>
+      _call('verifyAnswers', _check, arguments: {'answers': answers});
+
+  @override
+  FutureResult<VaultCheck> setPinWithAnswers({
+    required List<String> answers,
+    required String pin,
+  }) => _call(
+    'setPinWithAnswers',
+    _check,
+    arguments: {'answers': answers, 'pin': pin},
+  );
+
+  @override
+  FutureResult<VaultCheck> setPinWithRecoveryKey({
+    required String recoveryKey,
+    required String pin,
+  }) => _call(
+    'setPinWithRecoveryKey',
+    _check,
+    arguments: {'recoveryKey': recoveryKey, 'pin': pin},
+  );
+
+  @override
+  FutureResult<Unit> setPasswordEnabled({required bool enabled}) =>
+      _call('setPasswordEnabled', (_) => unit, arguments: {'enabled': enabled});
+}
