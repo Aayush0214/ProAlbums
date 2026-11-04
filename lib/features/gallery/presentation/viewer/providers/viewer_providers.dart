@@ -1,7 +1,9 @@
+import 'package:proalbums/features/gallery/data/repositories/method_channel_media_edit_repository.dart';
 import 'package:proalbums/features/gallery/data/repositories/method_channel_video_frame_repository.dart';
 import 'package:proalbums/features/gallery/data/repositories/method_channel_video_tools_repository.dart';
 import 'package:proalbums/features/gallery/data/repositories/photo_manager_media_image_repository.dart';
 import 'package:proalbums/features/gallery/data/repositories/photo_manager_video_source_repository.dart';
+import 'package:proalbums/features/gallery/domain/repositories/media_edit_repository.dart';
 import 'package:proalbums/features/gallery/domain/repositories/media_image_repository.dart';
 import 'package:proalbums/features/gallery/domain/repositories/video_frame_repository.dart';
 import 'package:proalbums/features/gallery/domain/repositories/video_source_repository.dart';
@@ -40,3 +42,7 @@ GetVideoFrameUseCase getVideoFrameUseCase(Ref ref) =>
 @Riverpod(keepAlive: true)
 VideoToolsRepository videoToolsRepository(Ref ref) =>
     const MethodChannelVideoToolsRepository();
+
+@Riverpod(keepAlive: true)
+MediaEditRepository mediaEditRepository(Ref ref) =>
+    const MethodChannelMediaEditRepository();

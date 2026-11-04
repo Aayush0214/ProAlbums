@@ -45,7 +45,6 @@ enum MediaAction {
   slideshow('Slideshow'),
   contactPicture('Contact profile picture'),
   rotate('Rotate'),
-  screenMirroring('Screen Mirroring'),
   convertToH264('Convert to standard codec (H.264)'),
   unhide('Unhide', icon: LucideIcons.eye),
 
@@ -133,7 +132,6 @@ List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
       MediaAction.rename,
       MediaAction.compressSize,
       MediaAction.slideshow,
-      MediaAction.screenMirroring,
       MediaAction.convertToH264,
     ];
   }
@@ -149,7 +147,6 @@ List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
     MediaAction.rotate,
     MediaAction.copyToClipboard,
     MediaAction.convertPdf,
-    MediaAction.screenMirroring,
     MediaAction.print,
   ];
 }

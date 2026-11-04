@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
+import 'package:proalbums/features/gallery/presentation/actions/media_edit_flows.dart';
 import 'package:proalbums/features/gallery/presentation/providers/share_providers.dart';
 import 'package:proalbums/features/pdf/presentation/widgets/print_pictures_flow.dart';
 import 'package:proalbums/features/trash/presentation/widgets/delete_flow.dart';
@@ -101,15 +102,25 @@ Future<bool> runMediaAction(
       // Recently deleted on: decrypted into the trash; off: gone for good.
       return deleteHiddenItems(context, ref, items);
 
+    // The viewer's one-item actions.
+    case MediaAction.rename:
+      return renameMediaItem(context, ref, items.first);
+
+    case MediaAction.rotate:
+      return rotateMediaItem(context, ref, items.first);
+
+    case MediaAction.googleLens:
+      await openGoogleLens(context, ref, items.first);
+      return false;
+
+    case MediaAction.contactPicture:
+      await setAsContactPhoto(context, ref, items.first);
+      return false;
+
     case MediaAction.create ||
         MediaAction.setAsWallpaper ||
-        MediaAction.googleLens ||
-        MediaAction.rename ||
         MediaAction.compressSize ||
         MediaAction.slideshow ||
-        MediaAction.contactPicture ||
-        MediaAction.rotate ||
-        MediaAction.screenMirroring ||
         MediaAction.convertToH264:
       // Each one is switched on by the phase that builds it.
       showComingSoon(context, action.label);

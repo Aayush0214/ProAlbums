@@ -19,14 +19,33 @@ typedef ThumbnailLoader = Future<Uint8List?> Function(String id, int size);
 /// It is the "cached network image" idea, for local gallery items.
 @immutable
 class MediaThumbnailImage extends ImageProvider<MediaThumbnailImage> {
-  const MediaThumbnailImage({
+  MediaThumbnailImage({
     required this.id,
     required this.size,
     required this.load,
-  });
+  }) : revision = _revisions[id] ?? 0;
 
   final String id;
   final int size;
+
+  /// Bumped when the FILE itself changed but kept its id (Rotate): part of
+  /// the key, so every grid / viewer / strip loads the new picture instead
+  /// of the old decoded one. 0 for nearly every photo.
+  final int revision;
+
+  static final Map<String, int> _revisions = <String, int>{};
+
+  /// Photo [id] was changed on disk: drop its old decoded copies and make
+  /// the next providers load it again.
+  static void markChanged(String id) {
+    final cache = PaintingBinding.instance.imageCache;
+    for (final size in _sizesLoaded) {
+      cache.evict(MediaThumbnailImage(id: id, size: size, load: _noLoad));
+    }
+    _revisions[id] = (_revisions[id] ?? 0) + 1;
+  }
+
+  static Future<Uint8List?> _noLoad(String id, int size) async => null;
 
   /// Not part of the cache key on purpose (same photo = same key).
   final ThumbnailLoader load;
@@ -117,8 +136,11 @@ class MediaThumbnailImage extends ImageProvider<MediaThumbnailImage> {
 
   @override
   bool operator ==(Object other) =>
-      other is MediaThumbnailImage && other.id == id && other.size == size;
+      other is MediaThumbnailImage &&
+      other.id == id &&
+      other.size == size &&
+      other.revision == revision;
 
   @override
-  int get hashCode => Object.hash(id, size);
+  int get hashCode => Object.hash(id, size, revision);
 }

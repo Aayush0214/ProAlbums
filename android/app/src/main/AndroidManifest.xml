@@ -59,5 +59,11 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Viewer > More > Contact profile picture: find the Contacts app
+             among the apps that can "set a picture as" something. -->
+        <intent>
+            <action android:name="android.intent.action.ATTACH_DATA"/>
+            <data android:mimeType="image/*"/>
+        </intent>
     </queries>
 </manifest>
