@@ -135,13 +135,21 @@ final class HideMediaUseCase {
 
   final VaultRepository _repository;
 
+  /// [favorites]: gallery ids with a heart now (kept inside the vault, so
+  /// the heart comes back on Unhide).
   FutureResult<HideResult> call(
     List<MediaItem> items, {
+    Set<String> favorites = const {},
     void Function(int done, int total)? onProgress,
   }) async {
     if (items.isEmpty) return left(const MediaFailure('Nothing to hide.'));
     return _repository.hide([
-      for (final item in items) (id: item.id, video: item.isVideo),
+      for (final item in items)
+        (
+          id: item.id,
+          video: item.isVideo,
+          favorite: favorites.contains(item.id),
+        ),
     ], onProgress: onProgress);
   }
 }

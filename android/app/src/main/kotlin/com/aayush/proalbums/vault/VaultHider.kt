@@ -22,7 +22,7 @@ class VaultHider(
     private val folder: VaultFolder,
 ) {
     /** One item to hide (MediaStore id + kind). */
-    class Source(val id: Long, val video: Boolean) {
+    class Source(val id: Long, val video: Boolean, val favorite: Boolean = false) {
         val uri: Uri
             get() = ContentUris.withAppendedId(
                 if (video) {
@@ -57,7 +57,7 @@ class VaultHider(
 
     private fun encryptOne(source: Source, dek: ByteArray): Hidden? {
         val original = source.uri
-        val header = header(original, source.video) ?: return null
+        val header = header(original, source.video, source.favorite) ?: return null
         val thumbnail = thumbnail(original)
         val name = "${UUID.randomUUID().toString().replace("-", "")}.pav"
         val vaultFile = folder.insertPending(name)
@@ -107,7 +107,7 @@ class VaultHider(
     }
 
     /** What Unhide needs to put the item back exactly where it was. */
-    private fun header(uri: Uri, video: Boolean): JSONObject? {
+    private fun header(uri: Uri, video: Boolean, favorite: Boolean): JSONObject? {
         val columns = mutableListOf(
             MediaStore.MediaColumns.DISPLAY_NAME,
             MediaStore.MediaColumns.RELATIVE_PATH,
@@ -143,6 +143,8 @@ class VaultHider(
                 number(MediaStore.MediaColumns.ORIENTATION)?.let { put(VaultHeader.ORIENTATION, it) }
                 number(MediaStore.MediaColumns.DURATION)?.let { put(VaultHeader.DURATION_MS, it) }
                 put(VaultHeader.HIDDEN_AT_MS, System.currentTimeMillis())
+                // Gets its heart back when it is unhidden.
+                if (favorite) put(VaultHeader.FAVORITE, true)
             }
         }
         return null
@@ -186,6 +188,7 @@ object VaultHeader {
     const val ORIENTATION = "orientation"
     const val DURATION_MS = "duration"
     const val HIDDEN_AT_MS = "hiddenAt"
+    const val FAVORITE = "fav"
 }
 
 /** A vault file read through a FileChannel (random access, for videos too). */

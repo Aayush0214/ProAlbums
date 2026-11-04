@@ -37,6 +37,38 @@ class VaultFolder(private val resolver: ContentResolver) {
         return null
     }
 
+    /**
+     * Our vault key file. Android may have named it "vault (1).key" (an
+     * old vault.key from before a reinstall was there and is not ours).
+     */
+    fun findKeyFile(): Uri? {
+        resolver.query(
+            collection,
+            arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME),
+            "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND " +
+                "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ?",
+            arrayOf(RELATIVE_PATH, "vault%"),
+            "${MediaStore.MediaColumns.DATE_ADDED} DESC",
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                if (VaultNames.isKeyFile(cursor.getString(1) ?: continue)) {
+                    return ContentUris.withAppendedId(collection, cursor.getLong(0))
+                }
+            }
+        }
+        return null
+    }
+
+    /** Gives our file [uri] the name [name] (e.g. back to vault.key). */
+    fun rename(uri: Uri, name: String) {
+        resolver.update(
+            uri,
+            ContentValues().apply { put(MediaStore.MediaColumns.DISPLAY_NAME, name) },
+            null,
+            null,
+        )
+    }
+
     fun read(uri: Uri): ByteArray =
         resolver.openInputStream(uri)?.use { it.readBytes() }
             ?: throw IllegalStateException("Cannot read $uri")
@@ -100,6 +132,22 @@ class VaultFolder(private val resolver: ContentResolver) {
     }
 
     fun uriOf(id: Long): Uri = ContentUris.withAppendedId(collection, id)
+
+    /** Names of our hidden item files (to skip them when restoring). */
+    fun itemNames(): Set<String> {
+        val names = mutableSetOf<String>()
+        resolver.query(
+            collection,
+            arrayOf(MediaStore.MediaColumns.DISPLAY_NAME),
+            "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND " +
+                "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ?",
+            arrayOf(RELATIVE_PATH, "%.pav"),
+            null,
+        )?.use { cursor ->
+            while (cursor.moveToNext()) cursor.getString(0)?.let(names::add)
+        }
+        return names
+    }
 
     /** How many hidden items (.pav files of ours) the folder holds. */
     fun countItems(): Int =

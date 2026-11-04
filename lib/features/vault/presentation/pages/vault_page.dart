@@ -16,6 +16,7 @@ import 'package:proalbums/features/gallery/presentation/widgets/selection_action
 import 'package:proalbums/features/vault/domain/repositories/vault_repository.dart';
 import 'package:proalbums/features/vault/domain/vault_rules.dart';
 import 'package:proalbums/features/vault/presentation/providers/vault_providers.dart';
+import 'package:proalbums/features/vault/presentation/vault_flows.dart';
 import 'package:proalbums/features/vault/presentation/widgets/vault_secure_scope.dart';
 import 'package:proalbums/shared/widgets/app_back_button.dart';
 import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
@@ -122,7 +123,8 @@ class _VaultPageState extends ConsumerState<VaultPage> {
     final entries = ref.watch(vaultEntriesProvider);
     final items = ref.watch(vaultMediaItemsProvider);
     final selecting = ref.watch(_selectionProvider.select((s) => s.active));
-    // The vault's bars stand out from its grid (they are controls).
+    // The bottom bar stands out from the grid (its buttons are controls);
+    // the header keeps the page colour (Aayush, 2026-11-04).
     final barColor = context.colors.surfaceContainerHigh;
 
     final Widget header = selecting
@@ -138,14 +140,12 @@ class _VaultPageState extends ConsumerState<VaultPage> {
                     ? _selection.clearSelection()
                     : _selection.selectAll([for (final i in items) i.id]),
                 onClose: _selection.exit,
-                backgroundColor: barColor,
               );
             },
           )
         : CollapsingSliverAppBar(
             title: 'Hidden photos',
             leading: const AppBackButton(),
-            backgroundColor: barColor,
             actions: [
               if (items.isNotEmpty)
                 IconButton(
@@ -153,6 +153,17 @@ class _VaultPageState extends ConsumerState<VaultPage> {
                   icon: const Icon(LucideIcons.squareCheck),
                   onPressed: _selection.start,
                 ),
+              PopupMenuButton<void>(
+                tooltip: 'More',
+                icon: const Icon(LucideIcons.ellipsisVertical),
+                // The page context (not the menu's): the flow outlives the menu.
+                itemBuilder: (_) => [
+                  PopupMenuItem<void>(
+                    onTap: () => restoreVaultFlow(context, ref),
+                    child: const Text('Restore hidden items'),
+                  ),
+                ],
+              ),
             ],
           );
 
@@ -188,9 +199,11 @@ class _VaultPageState extends ConsumerState<VaultPage> {
                           columns: vaultGridColumns,
                         )
                       else
-                        const SliverFillRemaining(
+                        SliverFillRemaining(
                           hasScrollBody: false,
-                          child: _EmptyVault(),
+                          child: _EmptyVault(
+                            onRestore: () => restoreVaultFlow(context, ref),
+                          ),
                         ),
                     ],
                   )
@@ -216,7 +229,10 @@ class _VaultPageState extends ConsumerState<VaultPage> {
 }
 
 class _EmptyVault extends StatelessWidget {
-  const _EmptyVault();
+  const _EmptyVault({required this.onRestore});
+
+  /// "Restore hidden items" (e.g. right after a reinstall).
+  final VoidCallback onRestore;
 
   @override
   Widget build(BuildContext context) {
@@ -240,6 +256,12 @@ class _EmptyVault extends StatelessWidget {
               style: context.textTheme.bodyMedium?.copyWith(
                 color: context.colors.textSecondary,
               ),
+            ),
+            const SizedBox(height: 24),
+            TextButton.icon(
+              onPressed: onRestore,
+              icon: const Icon(LucideIcons.archiveRestore, size: 18),
+              label: const Text('Restore hidden items'),
             ),
           ],
         ),

@@ -47,7 +47,7 @@ class MainActivity : FlutterFragmentActivity() {
             folderChannel.onActivityResult(requestCode, resultCode)
         ) return
         if (::vaultChannel.isInitialized &&
-            vaultChannel.onActivityResult(requestCode, resultCode)
+            vaultChannel.onActivityResult(requestCode, resultCode, data)
         ) return
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)

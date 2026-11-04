@@ -30,6 +30,10 @@ abstract final class AppRoutes {
   static const String vaultRecoveryKey = '/vault/recovery-key';
   static const String vaultForgot = '/vault/forgot';
 
+  /// Restore hidden items from the vault folder (after a reinstall); the
+  /// number of items found goes as `extra` (an int).
+  static const String vaultRestore = '/vault/restore';
+
   // Pages with a parameter. The *Pattern is for the router, the function
   // builds the real path (ids are encoded, so any id is safe).
   static const String albumPattern = '/album/:albumId';

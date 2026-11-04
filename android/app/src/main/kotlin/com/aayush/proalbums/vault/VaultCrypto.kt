@@ -436,3 +436,15 @@ class VaultItemReader(private val source: VaultSource, dek: ByteArray) : AutoClo
         VaultCrypto.wipe(fileKey)
     }
 }
+
+/** File names in the vault folder. */
+object VaultNames {
+    private val renamedKey = Regex("""^vault( \(\d+\))?\.key( \(\d+\))?$""")
+
+    /**
+     * A vault key file: "vault.key", or one Android renamed because the name
+     * was taken — "vault.key (1)" (it adds the number at the END for a file
+     * type it does not know) or "vault (1).key".
+     */
+    fun isKeyFile(name: String): Boolean = renamedKey.matches(name)
+}

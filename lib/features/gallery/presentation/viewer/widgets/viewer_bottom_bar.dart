@@ -43,7 +43,20 @@ class ViewerBottomBar extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: own != null
                 ? [
-                    for (final action in own)
+                    for (final (index, action) in own.indexed) ...[
+                      // A hidden video plays here too: Play / Pause in the
+                      // middle (Unhide, Play, Delete), like the normal bar.
+                      if (index == own.length ~/ 2 &&
+                          session.mediaContext == MediaContext.vault &&
+                          item.isVideo &&
+                          onPlayPause != null)
+                        _Action(
+                          icon: isPlaying
+                              ? LucideIcons.pause
+                              : LucideIcons.play,
+                          label: isPlaying ? 'Pause' : 'Play',
+                          onPressed: onPlayPause!,
+                        ),
                       _Action(
                         icon: action.icon ?? LucideIcons.circle,
                         label: action.label,
@@ -53,6 +66,7 @@ class ViewerBottomBar extends ConsumerWidget {
                         onPressed: () =>
                             runViewerAction(context, ref, action, item),
                       ),
+                    ],
                     // The opener's own buttons (e.g. Crop & rotate).
                     for (final extra in session.extraActions)
                       _Action(

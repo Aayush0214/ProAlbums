@@ -146,7 +146,7 @@ final class MethodChannelVaultRepository implements VaultRepository {
 
   @override
   FutureResult<HideResult> hide(
-    List<({String id, bool video})> items, {
+    List<HideSource> items, {
     void Function(int done, int total)? onProgress,
   }) async {
     // Progress comes back as calls from the native side.
@@ -172,7 +172,8 @@ final class MethodChannelVaultRepository implements VaultRepository {
         },
         arguments: {
           'items': [
-            for (final item in items) {'id': item.id, 'video': item.video},
+            for (final item in items)
+              {'id': item.id, 'video': item.video, 'favorite': item.favorite},
           ],
         },
         failure: 'Could not hide the selected items.',
@@ -256,4 +257,103 @@ final class MethodChannelVaultRepository implements VaultRepository {
     arguments: {'id': id},
     failure: 'This video cannot be played.',
   );
+
+  static VaultCounts _counts(Object? value) {
+    final map = (value as Map<Object?, Object?>?) ?? const {};
+    return (
+      done: (map['done'] as num?)?.toInt() ?? 0,
+      failed: (map['failed'] as num?)?.toInt() ?? 0,
+      favorites: [
+        for (final id in (map['favorites'] as List<Object?>?) ?? const [])
+          '$id',
+      ],
+    );
+  }
+
+  @override
+  FutureResult<VaultCounts> restore(
+    List<String> ids, {
+    bool toTrash = false,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'restoreProgress' && onProgress != null) {
+        final map = call.arguments as Map<Object?, Object?>;
+        onProgress(
+          (map['done'] as num?)?.toInt() ?? 0,
+          (map['total'] as num?)?.toInt() ?? ids.length,
+        );
+      }
+    });
+    try {
+      return await _call(
+        'restore',
+        _counts,
+        arguments: {'ids': ids, 'toTrash': toTrash},
+        failure: toTrash
+            ? 'Could not delete the selected items.'
+            : 'Could not unhide the selected items.',
+      );
+    } finally {
+      _channel.setMethodCallHandler(null);
+    }
+  }
+
+  @override
+  FutureResult<VaultCounts> deleteForGood(List<String> ids) => _call(
+    'deleteForGood',
+    _counts,
+    arguments: {'ids': ids},
+    failure: 'Could not delete the selected items.',
+  );
+
+  @override
+  FutureResult<({int items, bool hasKey})?> pickVaultFolder() =>
+      _call('pickVaultFolder', (value) {
+        final map = (value as Map<Object?, Object?>?) ?? const {};
+        if (map['status'] != 'picked') return null;
+        return (
+          items: (map['items'] as num?)?.toInt() ?? 0,
+          hasKey: map['hasKey'] == true,
+        );
+      }, failure: 'Could not open the folder.');
+
+  @override
+  FutureResult<VaultImportResult> importFromFolder(
+    String recoveryKey, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'importProgress' && onProgress != null) {
+        final map = call.arguments as Map<Object?, Object?>;
+        onProgress(
+          (map['done'] as num?)?.toInt() ?? 0,
+          (map['total'] as num?)?.toInt() ?? 0,
+        );
+      }
+    });
+    try {
+      return await _call(
+        'importFromFolder',
+        (value) {
+          final map = (value as Map<Object?, Object?>?) ?? const {};
+          final wait = Duration(
+            milliseconds: (map['waitMillis'] as num?)?.toInt() ?? 0,
+          );
+          return switch (map['status']) {
+            'restored' => VaultImportResult(
+              wrongKey: false,
+              restored: (map['restored'] as num?)?.toInt() ?? 0,
+              failed: (map['failed'] as num?)?.toInt() ?? 0,
+            ),
+            _ => VaultImportResult(wrongKey: true, wait: wait),
+          };
+        },
+        arguments: {'recoveryKey': recoveryKey},
+        failure: 'Could not restore the hidden items.',
+      );
+    } finally {
+      _channel.setMethodCallHandler(null);
+    }
+  }
 }

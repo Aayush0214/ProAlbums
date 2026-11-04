@@ -52,10 +52,12 @@ final class _FakeVault implements VaultRepository {
 
   @override
   FutureResult<HideResult> hide(
-    List<({String id, bool video})> items, {
+    List<HideSource> items, {
     void Function(int done, int total)? onProgress,
   }) async {
-    calls.add('hide ${items.map((i) => '${i.id}:${i.video}').join(',')}');
+    calls.add(
+      'hide ${items.map((i) => '${i.id}:${i.video}:${i.favorite}').join(',')}',
+    );
     onProgress?.call(items.length, items.length);
     return right(HideResult(hidden: items.length, failed: 0));
   }
@@ -193,12 +195,13 @@ void main() {
     test('ids and kinds go to the vault, progress comes back', () async {
       final vault = _FakeVault();
       final seen = <(int, int)>[];
-      final result = await HideMediaUseCase(vault)([
-        item('7'),
-        item('9', video: true),
-      ], onProgress: (done, total) => seen.add((done, total)));
+      final result = await HideMediaUseCase(vault)(
+        [item('7'), item('9', video: true)],
+        favorites: {'7', 'not-hidden'},
+        onProgress: (done, total) => seen.add((done, total)),
+      );
       expect(result.getOrElse((_) => const HideResult.cancelled()).hidden, 2);
-      expect(vault.calls, ['hide 7:false,9:true']);
+      expect(vault.calls, ['hide 7:false:true,9:true:false']);
       expect(seen, [(2, 2)]);
     });
   });

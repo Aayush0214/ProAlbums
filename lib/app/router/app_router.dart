@@ -26,6 +26,7 @@ import 'package:proalbums/features/trash/presentation/pages/recently_deleted_pag
 import 'package:proalbums/features/vault/presentation/pages/vault_forgot_page.dart';
 import 'package:proalbums/features/vault/presentation/pages/vault_page.dart';
 import 'package:proalbums/features/vault/presentation/pages/vault_recovery_key_page.dart';
+import 'package:proalbums/features/vault/presentation/pages/vault_restore_page.dart';
 import 'package:proalbums/features/vault/presentation/pages/vault_setup_page.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -141,6 +142,13 @@ GoRouter appRouter(Ref ref) {
         parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.vaultForgot,
         builder: (context, state) => const VaultForgotPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.vaultRestore,
+        builder: (context, state) => VaultRestorePage(
+          itemCount: state.extra is int ? state.extra! as int : 0,
+        ),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

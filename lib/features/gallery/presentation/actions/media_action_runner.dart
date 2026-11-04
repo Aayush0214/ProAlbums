@@ -93,6 +93,14 @@ Future<bool> runMediaAction(
       // Android asks to delete the originals.
       return hideMediaItems(context, ref, items);
 
+    case MediaAction.unhide:
+      // Back to the folders they were hidden from.
+      return unhideHiddenItems(context, ref, items);
+
+    case MediaAction.deleteHidden:
+      // Recently deleted on: decrypted into the trash; off: gone for good.
+      return deleteHiddenItems(context, ref, items);
+
     case MediaAction.create ||
         MediaAction.setAsWallpaper ||
         MediaAction.googleLens ||
@@ -102,9 +110,7 @@ Future<bool> runMediaAction(
         MediaAction.contactPicture ||
         MediaAction.rotate ||
         MediaAction.screenMirroring ||
-        MediaAction.convertToH264 ||
-        MediaAction.unhide ||
-        MediaAction.deleteHidden:
+        MediaAction.convertToH264:
       // Each one is switched on by the phase that builds it.
       showComingSoon(context, action.label);
       return false;

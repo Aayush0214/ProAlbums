@@ -143,4 +143,14 @@ class VaultCryptoTest {
         val changed = file.copyOf().also { it[it.size - 1] = (it[it.size - 1] + 1).toByte() }
         assertThrows(VaultFormatException::class.java) { VaultKeyFile.unlock(changed, key) }
     }
+
+    @Test
+    fun `key files are found also when Android renamed them`() {
+        for (name in listOf("vault.key", "vault.key (1)", "vault.key (12)", "vault (1).key")) {
+            assertTrue(name, VaultNames.isKeyFile(name))
+        }
+        for (name in listOf("vault.pav", "myvault.key", "vault.keys", "vault.key (x)", "a.key")) {
+            assertTrue(name, !VaultNames.isKeyFile(name))
+        }
+    }
 }

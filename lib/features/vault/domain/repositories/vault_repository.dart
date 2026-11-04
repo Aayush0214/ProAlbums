@@ -4,6 +4,14 @@ import 'package:fpdart/fpdart.dart';
 import 'package:proalbums/core/utils/typedefs.dart';
 import 'package:proalbums/features/vault/domain/entities/vault_status.dart';
 
+/// One item to hide: gallery id, kind, and whether it has a heart (it gets
+/// it back when unhidden).
+typedef HideSource = ({String id, bool video, bool favorite});
+
+/// How many items an Unhide / Delete did, and the NEW gallery ids of the
+/// restored items that had a heart.
+typedef VaultCounts = ({int done, int failed, List<String> favorites});
+
 /// The private vault's keys. The vault key itself never reaches Dart: it is
 /// made, kept and wiped natively (VaultChannel.kt).
 ///
@@ -68,7 +76,7 @@ abstract interface class VaultRepository {
   /// folder ([onProgress] after each), then ONE system request to delete
   /// the originals. [items] = MediaStore id + whether it is a video.
   FutureResult<HideResult> hide(
-    List<({String id, bool video})> items, {
+    List<HideSource> items, {
     void Function(int done, int total)? onProgress,
   });
 
@@ -83,6 +91,29 @@ abstract interface class VaultRepository {
 
   /// The viewer picture, long side at most [maxLongEdge] (JPEG).
   Future<Uint8List?> picture(String id, {required int maxLongEdge});
+
+  /// Unhide ([toTrash] false: back where each came from) or Delete with
+  /// Recently deleted on ([toTrash] true: restored straight into the trash).
+  FutureResult<VaultCounts> restore(
+    List<String> ids, {
+    bool toTrash = false,
+    void Function(int done, int total)? onProgress,
+  });
+
+  /// Delete with Recently deleted off: gone for good.
+  FutureResult<VaultCounts> deleteForGood(List<String> ids);
+
+  /// Restore, step 1: the system folder picker (opens at the vault
+  /// folder). null = cancelled; else how many hidden files and whether a
+  /// vault key is there.
+  FutureResult<({int items, bool hasKey})?> pickVaultFolder();
+
+  /// Restore, step 2: the Recovery Key opens the picked folder's vault;
+  /// its items are copied into this vault (still encrypted).
+  FutureResult<VaultImportResult> importFromFolder(
+    String recoveryKey, {
+    void Function(int done, int total)? onProgress,
+  });
 
   /// A one-time address (127.0.0.1, valid while the vault is open) the
   /// player streams hidden video [id] from, decrypted as it plays.

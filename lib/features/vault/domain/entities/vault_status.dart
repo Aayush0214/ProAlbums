@@ -113,3 +113,21 @@ final class VaultEntry {
   final Duration duration;
   final int sizeBytes;
 }
+
+/// How a Restore from the vault folder ended.
+final class VaultImportResult {
+  const VaultImportResult({
+    required this.wrongKey,
+    this.restored = 0,
+    this.failed = 0,
+    this.wait = Duration.zero,
+  });
+
+  /// The Recovery Key does not open this folder's vault.
+  final bool wrongKey;
+  final int restored;
+  final int failed;
+
+  /// Too many wrong tries: wait this long.
+  final Duration wait;
+}
