@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/core/theme/app_typography.dart';
+import 'package:proalbums/features/compress/domain/compress_rules.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/images/media_thumbnail_image.dart';
 import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
@@ -29,8 +30,13 @@ class SelectableTile extends StatelessWidget {
     required this.onTap,
     this.label,
     this.onExpand,
+    this.compressedBytes,
     super.key,
   });
+
+  /// A copy made by Compress size: its size, shown top left with a zip icon
+  /// ("12.6M", like the system gallery). null = none.
+  final int? compressedBytes;
 
   final MediaItem item;
   final int thumbnailSize;
@@ -88,6 +94,12 @@ class SelectableTile extends StatelessWidget {
                 ],
               ),
             ),
+          if (compressedBytes case final bytes?)
+            Positioned(
+              left: compact ? 3 : 6,
+              top: compact ? 3 : 6,
+              child: _CompressedBadge(bytes: bytes, compact: compact),
+            ),
           if (selected)
             ColoredBox(
               color: context.colorScheme.primary.withValues(alpha: 0.22),
@@ -110,6 +122,41 @@ class SelectableTile extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Zip icon + size of a compressed copy, white with a soft shadow (no pill),
+/// like the system gallery.
+class _CompressedBadge extends StatelessWidget {
+  const _CompressedBadge({required this.bytes, required this.compact});
+
+  final int bytes;
+  final bool compact;
+
+  static const List<Shadow> _shadow = [
+    Shadow(blurRadius: 4, color: AppColors.mediaBadgeFill),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          LucideIcons.fileArchive,
+          size: compact ? 10 : 14,
+          color: AppColors.mediaBadgeText,
+          shadows: _shadow,
+        ),
+        if (!compact) ...[
+          const SizedBox(width: 3),
+          Text(
+            compressedBadgeText(bytes),
+            style: AppTypography.badgeTimestamp().copyWith(shadows: _shadow),
+          ),
+        ],
+      ],
     );
   }
 }

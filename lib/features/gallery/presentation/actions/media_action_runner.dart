@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:proalbums/app/router/app_routes.dart';
+import 'package:proalbums/features/compress/presentation/compress_flow.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_edit_flows.dart';
@@ -117,9 +118,13 @@ Future<bool> runMediaAction(
       await setAsContactPhoto(context, ref, items.first);
       return false;
 
+    case MediaAction.compressSize:
+      // The compress feature: a smaller copy, the viewer then shows it.
+      await compressMediaItem(context, ref, items.first);
+      return false;
+
     case MediaAction.create ||
         MediaAction.setAsWallpaper ||
-        MediaAction.compressSize ||
         MediaAction.slideshow ||
         MediaAction.convertToH264:
       // Each one is switched on by the phase that builds it.

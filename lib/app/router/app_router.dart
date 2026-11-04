@@ -10,6 +10,7 @@ import 'package:proalbums/features/albums/presentation/pages/albums_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/change_cover_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/move_copy_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/other_albums_page.dart';
+import 'package:proalbums/features/compress/presentation/compress_video_page.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/pages/photos_page.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/video_player_page.dart';
@@ -237,6 +238,13 @@ GoRouter appRouter(Ref ref) {
             rotationHeld: request.rotated,
           );
         },
+      ),
+      // Compress size of a video: progress, then the new copy.
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.compressVideo,
+        builder: (context, state) =>
+            CompressVideoPage(request: state.extra! as CompressVideoRequest),
       ),
     ],
   );

@@ -80,3 +80,16 @@ class ViewerSession extends _$ViewerSession {
 
   void start(ViewerSessionData data) => state = data;
 }
+
+/// "Show this item next": set by an action that made a NEW item from the one
+/// on screen (Compress size). The open viewer moves to it as soon as it is in
+/// its list (the library notices a new file a moment later), then clears it.
+@Riverpod(keepAlive: true)
+class ViewerJump extends _$ViewerJump {
+  @override
+  String? build() => null;
+
+  void to(String id) => state = id;
+
+  void clear() => state = null;
+}

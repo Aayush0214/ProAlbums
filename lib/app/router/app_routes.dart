@@ -38,6 +38,10 @@ abstract final class AppRoutes {
   /// VideoPlayerRequest (the video, and whether the screen was turned).
   static const String videoPlayer = '/video-player';
 
+  /// Compress size of a video (progress, then the new copy); `extra` is a
+  /// CompressVideoRequest.
+  static const String compressVideo = '/compress-video';
+
   // Pages with a parameter. The *Pattern is for the router, the function
   // builds the real path (ids are encoded, so any id is safe).
   static const String albumPattern = '/album/:albumId';

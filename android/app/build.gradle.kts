@@ -49,6 +49,12 @@ flutter {
 }
 
 dependencies {
+    // Compress size / Convert to H.264: Android's Media3 Transformer (same
+    // version as video_player's ExoPlayer, so they share media3-common).
+    implementation("androidx.media3:media3-transformer:1.9.2")
+    implementation("androidx.media3:media3-effect:1.9.2")
+    implementation("androidx.media3:media3-common:1.9.2")
+
     // Computer-side tests of the vault's encryption (android/app/src/test).
     testImplementation("junit:junit:4.13.2")
 }

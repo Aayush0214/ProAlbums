@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:proalbums/core/database/tables/compressed_media.dart';
 import 'package:proalbums/core/database/tables/favorites.dart';
 
 part 'app_database.g.dart';
@@ -12,14 +13,14 @@ part 'app_database.g.dart';
 ///
 /// Tables are added feature by feature. Every time a table changes: bump
 /// [schemaVersion] and add a step in `onUpgrade`.
-@DriftDatabase(tables: [Favorites])
+@DriftDatabase(tables: [Favorites, CompressedMedia])
 class AppDatabase extends _$AppDatabase {
   /// Pass an in-memory executor in tests: `AppDatabase(NativeDatabase.memory())`.
   AppDatabase([QueryExecutor? executor])
       : super(executor ?? driftDatabase(name: 'pro_album'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -32,6 +33,8 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(favorites, favorites.displayName);
             await m.addColumn(favorites, favorites.relativePath);
           }
+          // Version 4: copies made by Compress size (grid badge).
+          if (from < 4) await m.createTable(compressedMedia);
         },
       );
 }

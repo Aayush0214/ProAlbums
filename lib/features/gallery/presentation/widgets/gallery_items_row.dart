@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:proalbums/features/compress/presentation/compress_providers.dart';
 import 'package:proalbums/features/favorites/presentation/providers/favorites_providers.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_geometry.dart';
@@ -63,6 +64,21 @@ class GalleryItemsRow extends ConsumerWidget {
         return set == null ? 0 : rowMask(items, set);
       }),
     );
+    // Copies made by Compress size (videos): a bit per tile, like hearts.
+    final compressed = ref.watch(
+      compressedSizesProvider.select((sizes) {
+        final map = sizes.value;
+        if (map == null || map.isEmpty) return 0;
+        var mask = 0;
+        for (var i = 0; i < items.length; i++) {
+          if (map.containsKey(items[i].id)) mask |= 1 << i;
+        }
+        return mask;
+      }),
+    );
+    final compressedSizes = compressed == 0
+        ? null
+        : ref.read(compressedSizesProvider).value;
     final controller = ref.read(
       mediaSelectionControllerProvider(scope.id).notifier,
     );
@@ -109,6 +125,10 @@ class GalleryItemsRow extends ConsumerWidget {
                     ? TileMode.selected
                     : TileMode.unselected,
                 isFavorite: (hearts & (1 << i)) != 0,
+                compressedBytes:
+                    (compressed & (1 << i)) != 0 && items[i].isVideo
+                    ? (compressedSizes?[items[i].id])
+                    : null,
                 label: scope.tileLabel?.call(items[i]),
                 load: load,
                 onTap: onTapOf(items[i]),

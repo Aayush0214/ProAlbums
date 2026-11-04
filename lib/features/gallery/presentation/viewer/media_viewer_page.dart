@@ -184,6 +184,18 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
       return const Scaffold();
     }
 
+    // An action made a new item from this one (Compress size): go to it once
+    // the library has it.
+    final jump = ref.watch(viewerJumpProvider);
+    if (jump != null &&
+        _pageController != null &&
+        items.any((item) => item.id == jump)) {
+      _currentId = jump;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(viewerJumpProvider.notifier).clear();
+      });
+    }
+
     if (_pageController == null) {
       final start = resolveViewerIndex(
         ids: [for (final item in items) item.id],
