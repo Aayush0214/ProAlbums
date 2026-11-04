@@ -84,6 +84,10 @@ abstract interface class VaultRepository {
   /// The viewer picture, long side at most [maxLongEdge] (JPEG).
   Future<Uint8List?> picture(String id, {required int maxLongEdge});
 
+  /// A one-time address (127.0.0.1, valid while the vault is open) the
+  /// player streams hidden video [id] from, decrypted as it plays.
+  FutureResult<String> videoUrl(String id);
+
   /// Name, size and resolution for the Info card (never the path).
   Future<({String name, int width, int height, int sizeBytes})?> details(
     String id,

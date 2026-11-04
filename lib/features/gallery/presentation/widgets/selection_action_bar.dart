@@ -13,7 +13,11 @@ import 'package:proalbums/features/gallery/presentation/providers/media_selectio
 /// every action runs through [runMediaAction], so the bar is the same widget
 /// on every screen.
 class SelectionActionBar extends StatelessWidget {
-  const SelectionActionBar({super.key});
+  const SelectionActionBar({this.backgroundColor, super.key});
+
+  /// null = the theme's surface (most screens); a screen can set its own so
+  /// the bar stands out (the private vault).
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +26,7 @@ class SelectionActionBar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Material(
-      color: scheme.surface,
+      color: backgroundColor ?? scheme.surface,
       elevation: 3,
       // Needed because this bar REPLACES the navigation bar (see PhotosPage),
       // so it must keep clear of the phone's gesture area by itself.
@@ -52,7 +56,11 @@ List<MediaItem> _selectedItems(BuildContext context, WidgetRef ref) {
       .toList();
 }
 
-Future<void> _run(BuildContext context, WidgetRef ref, MediaAction action) async {
+Future<void> _run(
+  BuildContext context,
+  WidgetRef ref,
+  MediaAction action,
+) async {
   // Taken before the await: the screen (and this bar) may be gone when the
   // action finishes (e.g. every picture moved out of an album).
   final selection = ref.read(mediaSelectionOf(context).notifier);
@@ -139,7 +147,11 @@ class _MoreAction extends ConsumerWidget {
               ),
           ];
         },
-        child: _BarBody(icon: LucideIcons.ellipsisVertical, label: 'More', color: color),
+        child: _BarBody(
+          icon: LucideIcons.ellipsisVertical,
+          label: 'More',
+          color: color,
+        ),
       ),
     );
   }
@@ -169,9 +181,7 @@ class _BarBody extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context)
-                .textTheme
-                .labelSmall
+            style: Theme.of(context).textTheme.labelSmall
                 ?.copyWith(color: color),
           ),
         ],

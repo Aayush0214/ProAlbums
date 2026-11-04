@@ -44,6 +44,7 @@ class VaultChannel(private val activity: Activity) : MethodChannel.MethodCallHan
     private var channel: MethodChannel? = null
     private val hider = VaultHider(activity.contentResolver, folder)
     private val viewer = VaultViewer(activity.contentResolver, folder)
+    private val videos = VaultVideoServer(activity.contentResolver, folder) { session?.copyOf() }
 
     /** Grid / viewer reads: their own threads, so thumbnails never wait
      * behind a big picture or a Hide. */
@@ -108,6 +109,9 @@ class VaultChannel(private val activity: Activity) : MethodChannel.MethodCallHan
                         call.argument<Int>("maxLongEdge")!!,
                     )
                 }
+            }
+            "videoUrl" -> run(result) {
+                withSession { videos.urlFor(call.argument<String>("id")!!.toLong()) }
             }
             "details" -> read(result) {
                 withSession { dek -> viewer.details(call.argument<String>("id")!!.toLong(), dek) }
@@ -475,6 +479,8 @@ class VaultChannel(private val activity: Activity) : MethodChannel.MethodCallHan
         val old = session
         session = null
         VaultCrypto.wipe(old)
+        // No hidden video can be played once locked.
+        videos.stop()
     }
 
     private companion object {

@@ -16,7 +16,8 @@ double collapseProgress(double fromTop, {double distance = 56}) =>
 /// The title style at a given [progress]: only the size changes.
 TextStyle collapsingTitleStyle(BuildContext context, double progress) =>
     context.textTheme.headlineLarge!.copyWith(
-      fontSize: kTitleExpandedSize +
+      fontSize:
+          kTitleExpandedSize +
           (kTitleCollapsedSize - kTitleExpandedSize) * progress,
     );
 
@@ -31,6 +32,7 @@ class CollapsingSliverAppBar extends StatelessWidget {
     required this.title,
     this.leading,
     this.actions = const [],
+    this.backgroundColor,
     super.key,
   });
 
@@ -39,6 +41,10 @@ class CollapsingSliverAppBar extends StatelessWidget {
   /// For example a back button. The title then starts after it.
   final Widget? leading;
   final List<Widget> actions;
+
+  /// null = the page's own background (most pages); a screen can set its
+  /// own so the bar stands out (the private vault).
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +55,8 @@ class CollapsingSliverAppBar extends StatelessWidget {
         leading: leading,
         actions: actions,
         topPadding: MediaQuery.paddingOf(context).top,
+        backgroundColor:
+            backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
       ),
     );
   }
@@ -60,7 +68,10 @@ class _Delegate extends SliverPersistentHeaderDelegate {
     required this.leading,
     required this.actions,
     required this.topPadding,
+    required this.backgroundColor,
   });
+
+  final Color backgroundColor;
 
   /// How much taller the whole bar is when the title is big.
   static const double _extra = 32;
@@ -78,10 +89,10 @@ class _Delegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context,
-      double shrinkOffset,
-      bool overlapsContent,
-      ) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     final t = math.min(1.0, math.max(0.0, shrinkOffset / _extra));
     final style = collapsingTitleStyle(context, t);
     final startX = leading == null ? 16.0 : 56.0;
@@ -90,12 +101,13 @@ class _Delegate extends SliverPersistentHeaderDelegate {
     // whole bar gets shorter while scrolling, so the row moves up together
     // (icons keep their size, only the title text shrinks).
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: Theme.of(context).appBarTheme.systemOverlayStyle ??
+      value:
+          Theme.of(context).appBarTheme.systemOverlayStyle ??
           (Theme.of(context).brightness == Brightness.dark
               ? SystemUiOverlayStyle.light
               : SystemUiOverlayStyle.dark),
       child: ColoredBox(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: backgroundColor,
         child: Stack(
           children: [
             Positioned(
@@ -118,13 +130,7 @@ class _Delegate extends SliverPersistentHeaderDelegate {
               right: 4,
               bottom: 5,
               height: kToolbarHeight,
-              child: Row(
-                children: [
-                  ?leading,
-                  const Spacer(),
-                  ...actions,
-                ],
-              ),
+              child: Row(children: [?leading, const Spacer(), ...actions]),
             ),
           ],
         ),
@@ -135,7 +141,8 @@ class _Delegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(_Delegate old) =>
       old.title != title ||
-          old.topPadding != topPadding ||
-          old.leading != leading ||
-          old.actions != actions;
+      old.backgroundColor != backgroundColor ||
+      old.topPadding != topPadding ||
+      old.leading != leading ||
+      old.actions != actions;
 }

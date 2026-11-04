@@ -52,16 +52,15 @@ final class VideoPlaybackState {
     bool? isScrubbing,
     bool? started,
     Duration? duration,
-  }) =>
-      VideoPlaybackState(
-        activeId: activeId,
-        controller: controller,
-        status: status ?? this.status,
-        isPlaying: isPlaying ?? this.isPlaying,
-        isScrubbing: isScrubbing ?? this.isScrubbing,
-        started: started ?? this.started,
-        duration: duration ?? this.duration,
-      );
+  }) => VideoPlaybackState(
+    activeId: activeId,
+    controller: controller,
+    status: status ?? this.status,
+    isPlaying: isPlaying ?? this.isPlaying,
+    isScrubbing: isScrubbing ?? this.isScrubbing,
+    started: started ?? this.started,
+    duration: duration ?? this.duration,
+  );
 }
 
 /// Owns THE video player of the viewer. Only one video plays at a time, and
@@ -148,11 +147,12 @@ class VideoPlayback extends _$VideoPlayback {
 
     final clock = Stopwatch()..start();
     // The screen the viewer came from may know where its videos are (the
-    // trash); otherwise the normal lookup.
+    // trash, the vault's one-time address); otherwise the normal lookup.
     final own = ref.read(viewerSessionProvider).videoSource;
     final String? path;
     if (own != null) {
-      path = own(item);
+      path = await own(item);
+      if (!ref.mounted || generation != _generation) return;
     } else {
       final result = await ref.read(resolveVideoSourceUseCaseProvider)(item.id);
       if (!ref.mounted || generation != _generation) return;
@@ -166,11 +166,19 @@ class VideoPlayback extends _$VideoPlayback {
 
     final controller = path.startsWith('content://')
         ? VideoPlayerController.contentUri(Uri.parse(path))
+        // A hidden video, decrypted while it plays by the vault's server on
+        // 127.0.0.1 (never written to disk).
+        : path.startsWith('http://127.0.0.1')
+        ? VideoPlayerController.networkUrl(Uri.parse(path))
         : VideoPlayerController.file(File(path));
     try {
       await controller.initialize();
     } on Object catch (error, stackTrace) {
-      AppLogger.e('Video could not start', error: error, stackTrace: stackTrace);
+      AppLogger.e(
+        'Video could not start',
+        error: error,
+        stackTrace: stackTrace,
+      );
       await controller.dispose();
       if (ref.mounted && generation == _generation) _fail(item.id);
       return;
@@ -229,7 +237,9 @@ class VideoPlayback extends _$VideoPlayback {
   /// Best guess of where the video is RIGHT NOW (smooth, unlike the plugin).
   Duration estimatedPosition() {
     if (!state.isPlaying) return _anchor;
-    final passed = Duration(milliseconds: _clock.elapsedMilliseconds - _anchorAtMs);
+    final passed = Duration(
+      milliseconds: _clock.elapsedMilliseconds - _anchorAtMs,
+    );
     final guess = _anchor + passed;
     return guess > state.duration ? state.duration : guess;
   }
@@ -238,8 +248,7 @@ class VideoPlayback extends _$VideoPlayback {
 
   /// True while the video itself needs the decoder: the finger is moving it,
   /// a jump is being made, or it has only just started playing from a new spot.
-  bool get isBusy =>
-      state.isScrubbing || (_settleTimer?.isActive ?? false);
+  bool get isBusy => state.isScrubbing || (_settleTimer?.isActive ?? false);
 
   /// Taking frames out of the video for the strip uses the SAME hardware video
   /// decoder as playing it (a 4K phone has very few of them), so frames wait

@@ -6,13 +6,16 @@
     <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION"/>
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.MANAGE_MEDIA" />
-    <!-- TEMPORARY: google_fonts downloads fonts at runtime. Remove after bundling fonts. -->
+    <!-- Needed by the private vault: hidden videos play through a server on
+         127.0.0.1 inside the app (sockets need this permission even on the
+         phone itself). Nothing is sent off the phone. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="ProAlbums"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:enableOnBackInvokedCallback="true">
+        android:enableOnBackInvokedCallback="true"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true"

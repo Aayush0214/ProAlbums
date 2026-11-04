@@ -248,4 +248,12 @@ final class MethodChannelVaultRepository implements VaultRepository {
       return null;
     }
   }
+
+  @override
+  FutureResult<String> videoUrl(String id) => _call(
+    'videoUrl',
+    (value) => value! as String,
+    arguments: {'id': id},
+    failure: 'This video cannot be played.',
+  );
 }

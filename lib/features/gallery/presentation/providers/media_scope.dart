@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_details.dart';
@@ -47,7 +49,9 @@ class MediaScope extends InheritedWidget {
 
   /// Where the viewer plays a video from: null = the normal address. (Videos
   /// in Android's trash need their own.)
-  final String Function(MediaItem item)? videoSource;
+  /// (Hidden videos get a one-time address from the vault: may be async;
+  /// null = cannot be played.)
+  final FutureOr<String?> Function(MediaItem item)? videoSource;
 
   /// Where the viewer's Info card gets its details: null = MediaStore.
   /// (Hidden items have theirs in the vault; an empty path hides the Path

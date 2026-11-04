@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_details.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
@@ -35,7 +37,8 @@ final class ViewerSessionData {
   final ThumbnailLoader? imageLoader;
 
   /// Where a video is played from: null = the normal way.
-  final String Function(MediaItem item)? videoSource;
+  /// May be async (the vault); null = cannot be played.
+  final FutureOr<String?> Function(MediaItem item)? videoSource;
 
   /// Where the Info card gets its details: null = MediaStore.
   final Future<MediaDetails?> Function(String id)? detailsLoader;

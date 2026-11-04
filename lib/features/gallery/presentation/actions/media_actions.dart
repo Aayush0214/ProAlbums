@@ -50,7 +50,7 @@ enum MediaAction {
   unhide('Unhide', icon: LucideIcons.eye),
 
   /// Delete from the private vault (to Recently deleted, or for good).
-  deleteHidden('Delete', icon: LucideIcons.trash2);
+  deleteHidden('Delete', icon: LucideIcons.trash2, destructive: true);
 
   const MediaAction(this.label, {this.icon, this.destructive = false});
 

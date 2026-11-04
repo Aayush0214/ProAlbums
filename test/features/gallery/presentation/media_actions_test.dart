@@ -131,14 +131,32 @@ void main() {
     });
   });
 
-  test('only delete-for-good is destructive (shown in the error colour)', () {
+  test('delete for good and delete from the vault are destructive (red)', () {
     expect(
       [
         for (final a in MediaAction.values)
           if (a.destructive) a,
       ],
-      [MediaAction.deleteForever],
+      [MediaAction.deleteForever, MediaAction.deleteHidden],
     );
+  });
+
+  test('vault: Unhide and Delete only, no More, no heart', () {
+    expect(selectionActionsFor(MediaContext.vault).bar, [
+      MediaAction.unhide,
+      MediaAction.deleteHidden,
+    ]);
+    expect(selectionActionsFor(MediaContext.vault).more, isEmpty);
+    expect(viewerBarActionsFor(MediaContext.vault), [
+      MediaAction.unhide,
+      MediaAction.deleteHidden,
+    ]);
+    expect(
+      viewerMoreActionsFor(MediaContext.vault, _item(MediaType.image)),
+      isEmpty,
+    );
+    expect(viewerShowsFavorite(MediaContext.vault), isFalse);
+    expect(viewerShowsInfo(MediaContext.vault), isTrue);
   });
 
   test('preview (Convert PDF pages): look only, no actions anywhere', () {

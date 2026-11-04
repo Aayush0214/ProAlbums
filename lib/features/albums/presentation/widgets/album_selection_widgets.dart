@@ -50,8 +50,12 @@ class AlbumSelectionHeader extends StatelessWidget {
     required this.onSelectAllToggle,
     required this.onClose,
     this.subtitle,
+    this.backgroundColor,
     super.key,
   });
+
+  /// null = the page's own background; a screen can set its own (vault).
+  final Color? backgroundColor;
 
   final int selectedCount;
 
@@ -72,6 +76,8 @@ class AlbumSelectionHeader extends StatelessWidget {
         itemCount: itemCount,
         onSelectAllToggle: onSelectAllToggle,
         onClose: onClose,
+        backgroundColor:
+            backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
       ),
     );
   }
@@ -85,8 +91,10 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.itemCount,
     required this.onSelectAllToggle,
     required this.onClose,
+    required this.backgroundColor,
   });
 
+  final Color backgroundColor;
   final double topPadding;
   final int selectedCount;
   final String? subtitle;
@@ -103,19 +111,25 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => topPadding + _height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     final all = selectedCount > 0 && selectedCount == itemCount;
     final state = selectedCount == 0
         ? SelectionState.none
         : (all ? SelectionState.all : SelectionState.partial);
-    final title = selectedCount == 0 ? 'Select items' : '$selectedCount selected';
+    final title = selectedCount == 0
+        ? 'Select items'
+        : '$selectedCount selected';
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: Theme.of(context).brightness == Brightness.dark
           ? SystemUiOverlayStyle.light
           : SystemUiOverlayStyle.dark,
       child: ColoredBox(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        color: backgroundColor,
         child: Padding(
           padding: EdgeInsets.only(top: topPadding),
           child: Row(
@@ -133,8 +147,9 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
                     if (selectedCount > 0 && subtitle != null)
                       Text(
                         subtitle!,
-                        style: context.textTheme.bodySmall
-                            ?.copyWith(color: context.colors.textSecondary),
+                        style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colors.textSecondary,
+                        ),
                       ),
                   ],
                 ),
@@ -155,6 +170,7 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(_HeaderDelegate old) =>
       old.topPadding != topPadding ||
+      old.backgroundColor != backgroundColor ||
       old.selectedCount != selectedCount ||
       old.subtitle != subtitle ||
       old.itemCount != itemCount;
@@ -246,9 +262,7 @@ class _Button extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
+              style: Theme.of(context).textTheme.labelSmall
                   ?.copyWith(color: color, height: 1.15),
             ),
           ],
@@ -286,9 +300,7 @@ class _MoreButton extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               'More',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
+              style: Theme.of(context).textTheme.labelSmall
                   ?.copyWith(color: color),
             ),
           ],

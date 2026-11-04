@@ -122,6 +122,8 @@ class _VaultPageState extends ConsumerState<VaultPage> {
     final entries = ref.watch(vaultEntriesProvider);
     final items = ref.watch(vaultMediaItemsProvider);
     final selecting = ref.watch(_selectionProvider.select((s) => s.active));
+    // The vault's bars stand out from its grid (they are controls).
+    final barColor = context.colors.surfaceContainerHigh;
 
     final Widget header = selecting
         ? Consumer(
@@ -136,12 +138,14 @@ class _VaultPageState extends ConsumerState<VaultPage> {
                     ? _selection.clearSelection()
                     : _selection.selectAll([for (final i in items) i.id]),
                 onClose: _selection.exit,
+                backgroundColor: barColor,
               );
             },
           )
         : CollapsingSliverAppBar(
             title: 'Hidden photos',
             leading: const AppBackButton(),
+            backgroundColor: barColor,
             actions: [
               if (items.isNotEmpty)
                 IconButton(
@@ -159,6 +163,12 @@ class _VaultPageState extends ConsumerState<VaultPage> {
         items: vaultMediaItemsProvider,
         thumbnailLoader: _load,
         detailsLoader: _details,
+        // Played through the vault's 127.0.0.1 server, decrypted as it
+        // plays; the address dies when the vault locks.
+        videoSource: (item) async {
+          final url = await _repository.videoUrl(vaultFileId(item.id));
+          return url.fold((_) => null, (address) => address);
+        },
         child: PopScope(
           // Back while selecting = leave select mode, not the vault.
           canPop: !selecting,
@@ -166,7 +176,9 @@ class _VaultPageState extends ConsumerState<VaultPage> {
             if (!didPop) _selection.exit();
           },
           child: Scaffold(
-            bottomNavigationBar: selecting ? const SelectionActionBar() : null,
+            bottomNavigationBar: selecting
+                ? SelectionActionBar(backgroundColor: barColor)
+                : null,
             body: items.isEmpty
                 ? CustomScrollView(
                     slivers: [
