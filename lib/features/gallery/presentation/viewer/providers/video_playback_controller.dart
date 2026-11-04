@@ -29,7 +29,44 @@ final class VideoPlaybackState {
     this.isScrubbing = false,
     this.started = false,
     this.duration = Duration.zero,
+    this.looping = false,
+    this.speed = 1,
+    this.fill = false,
+    this.muted = false,
   });
+
+  /// Video tools (kept while the viewer is open, for every video in it):
+  /// play again from the start at the end ("Single loop").
+  final bool looping;
+
+  /// Playback speed (1 = normal).
+  final double speed;
+
+  /// "Crop to fit": the video fills the screen (cut at the edges) instead of
+  /// fitting inside it.
+  final bool fill;
+
+  /// No sound (the mute button in the player).
+  final bool muted;
+
+  /// A fresh state for another video that keeps the video-tool settings.
+  VideoPlaybackState keepingTools({
+    String? activeId,
+    VideoPlayerController? controller,
+    VideoStatus status = VideoStatus.idle,
+    bool started = false,
+    Duration duration = Duration.zero,
+  }) => VideoPlaybackState(
+    activeId: activeId,
+    controller: controller,
+    status: status,
+    started: started,
+    duration: duration,
+    looping: looping,
+    speed: speed,
+    fill: fill,
+    muted: muted,
+  );
 
   /// The video that was opened (null = no video is open).
   final String? activeId;
@@ -52,6 +89,10 @@ final class VideoPlaybackState {
     bool? isScrubbing,
     bool? started,
     Duration? duration,
+    bool? looping,
+    double? speed,
+    bool? fill,
+    bool? muted,
   }) => VideoPlaybackState(
     activeId: activeId,
     controller: controller,
@@ -60,6 +101,10 @@ final class VideoPlaybackState {
     isScrubbing: isScrubbing ?? this.isScrubbing,
     started: started ?? this.started,
     duration: duration ?? this.duration,
+    looping: looping ?? this.looping,
+    speed: speed ?? this.speed,
+    fill: fill ?? this.fill,
+    muted: muted ?? this.muted,
   );
 }
 
@@ -138,7 +183,7 @@ class VideoPlayback extends _$VideoPlayback {
     final generation = ++_generation;
     _detach();
     _setAnchor(Duration.zero);
-    state = VideoPlaybackState(
+    state = state.keepingTools(
       activeId: item.id,
       status: VideoStatus.loading,
       started: play,
@@ -189,9 +234,14 @@ class VideoPlayback extends _$VideoPlayback {
     }
 
     _controller = controller..addListener(_onValue);
+    // The video tools chosen earlier in this viewer apply to this video too.
+    await controller.setLooping(state.looping);
+    if (state.speed != 1) await controller.setPlaybackSpeed(state.speed);
+    if (state.muted) await controller.setVolume(0);
+    if (!ref.mounted || generation != _generation) return;
     // `started` may have turned true while we were getting ready.
     final started = state.started;
-    state = VideoPlaybackState(
+    state = state.keepingTools(
       activeId: item.id,
       controller: controller,
       status: VideoStatus.ready,
@@ -226,12 +276,42 @@ class VideoPlayback extends _$VideoPlayback {
 
   Future<void> pause() async => _controller?.pause();
 
+  // --- video tools -------------------------------------------------------------
+
+  /// "Single loop" on / off. Returns the new value.
+  Future<bool> toggleLooping() async {
+    final looping = !state.looping;
+    state = state.copyWith(looping: looping);
+    await _controller?.setLooping(looping);
+    return looping;
+  }
+
+  /// Playback speed (0.5x – 2x).
+  Future<void> setSpeed(double speed) async {
+    state = state.copyWith(speed: speed);
+    await _controller?.setPlaybackSpeed(speed);
+  }
+
+  /// Sound off / on (only this player; the phone's volume stays).
+  Future<void> toggleMute() async {
+    final muted = !state.muted;
+    state = state.copyWith(muted: muted);
+    await _controller?.setVolume(muted ? 0 : 1);
+  }
+
+  /// "Crop to fit" on / off (the video fills the screen). Returns the new value.
+  bool toggleFill() {
+    final fill = !state.fill;
+    state = state.copyWith(fill: fill);
+    return fill;
+  }
+
   /// The video is not needed any more (another page, the viewer closed).
   void close() {
     if (state.activeId == null) return;
     _generation++;
     _detach();
-    state = const VideoPlaybackState();
+    state = state.keepingTools();
   }
 
   /// Best guess of where the video is RIGHT NOW (smooth, unlike the plugin).
@@ -357,7 +437,7 @@ class VideoPlayback extends _$VideoPlayback {
   }
 
   void _fail(String id) {
-    state = VideoPlaybackState(activeId: id, status: VideoStatus.error);
+    state = state.keepingTools(activeId: id, status: VideoStatus.error);
   }
 
   void _detach() {

@@ -13,6 +13,7 @@ class MainActivity : FlutterFragmentActivity() {
     private lateinit var trashChannel: TrashChannel
     private lateinit var folderChannel: FolderChannel
     private lateinit var vaultChannel: VaultChannel
+    private lateinit var videoToolsChannel: VideoToolsChannel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +34,8 @@ class MainActivity : FlutterFragmentActivity() {
         folderChannel.register(flutterEngine.dartExecutor.binaryMessenger)
         StorageChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         ClipboardChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
+        videoToolsChannel = VideoToolsChannel(this)
+        videoToolsChannel.register(flutterEngine.dartExecutor.binaryMessenger)
         DocumentChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         vaultChannel = VaultChannel(this)
         vaultChannel.register(flutterEngine.dartExecutor.binaryMessenger)
@@ -48,6 +51,9 @@ class MainActivity : FlutterFragmentActivity() {
         ) return
         if (::vaultChannel.isInitialized &&
             vaultChannel.onActivityResult(requestCode, resultCode, data)
+        ) return
+        if (::videoToolsChannel.isInitialized &&
+            videoToolsChannel.onActivityResult(requestCode, resultCode, data)
         ) return
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)

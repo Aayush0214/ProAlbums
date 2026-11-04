@@ -34,6 +34,10 @@ abstract final class AppRoutes {
   /// number of items found goes as `extra` (an int).
   static const String vaultRestore = '/vault/restore';
 
+  /// The full-screen video player over the viewer; `extra` is a
+  /// VideoPlayerRequest (the video, and whether the screen was turned).
+  static const String videoPlayer = '/video-player';
+
   // Pages with a parameter. The *Pattern is for the router, the function
   // builds the real path (ids are encoded, so any id is safe).
   static const String albumPattern = '/album/:albumId';

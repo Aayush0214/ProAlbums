@@ -7,12 +7,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/core/platform/app_orientation.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/video_playback_controller.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/video_player_page.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_math.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_bottom_bar.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_filmstrip.dart';
@@ -108,6 +110,27 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
 
   bool _landscape = false;
 
+  // --- video player -----------------------------------------------------------
+
+  /// The full-screen video player (VideoPlayerPage) over this viewer, with the
+  /// same player. [rotate]: the floating rotate button turns the screen first.
+  Future<void> _openPlayer(MediaItem item, {bool rotate = false}) async {
+    if (!item.isVideo) return;
+    if (rotate) {
+      final landscape =
+          MediaQuery.orientationOf(context) == Orientation.landscape;
+      unawaited(AppOrientation.hold(landscape: !landscape));
+    }
+    setState(() => _infoVisible = false);
+    final VideoPlayerRequest request = (item: item, rotated: rotate);
+    await context.push<void>(
+      AppRoutes.videoPlayer,
+      extra: request,
+    );
+    // Back here: the player set the system bars its own way.
+    if (mounted) _applySystemUi();
+  }
+
   /// Look only (the pages of a PDF being made) with no button from the
   /// opener: no action bar at all.
   late final bool _noBar = () {
@@ -141,6 +164,8 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
   /// Portrait: the status bar shows with the bars. Landscape: always hidden
   /// (like the system gallery) so the top bar sits at the very top.
   void _applySystemUi() {
+    // The video player is on top: it decides the system bars.
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return;
     final show = _chromeVisible && !_landscape;
     SystemChrome.setEnabledSystemUIMode(
       show ? SystemUiMode.edgeToEdge : SystemUiMode.immersiveSticky,
@@ -264,6 +289,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
                 infoActive: _infoVisible,
                 onInfo: () => setState(() => _infoVisible = !_infoVisible),
                 onDelete: () => _delete(current),
+                onTools: () => _openPlayer(current),
               ),
             ),
             _FadingBar(
@@ -293,6 +319,39 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
                 ],
               ),
             ),
+            // A video: the rotate button floats at the right, above the
+            // strip; it turns the screen and opens the video player.
+            if (current.isVideo)
+              _FadingBar(
+                visible: _chromeVisible,
+                alignment: Alignment.bottomRight,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: 16,
+                    bottom:
+                        68 +
+                        (landscape || _noBar ? 0 : 64) +
+                        12 +
+                        MediaQuery.paddingOf(context).bottom,
+                  ),
+                  child: Material(
+                    color: AppColors.mediaBadgeFill,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () => _openPlayer(current, rotate: true),
+                      child: const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: Icon(
+                          LucideIcons.rotateCwSquare,
+                          size: 22,
+                          color: AppColors.mediaBadgeText,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             // Landscape: the play / pause button sits in the corner of the
             // video, above the strip.
             if (landscape && videoReady)

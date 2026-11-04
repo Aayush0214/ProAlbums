@@ -12,6 +12,7 @@ import 'package:proalbums/features/albums/presentation/pages/move_copy_page.dart
 import 'package:proalbums/features/albums/presentation/pages/other_albums_page.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/pages/photos_page.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/video_player_page.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_page_route.dart';
 import 'package:proalbums/features/pdf/presentation/pages/convert_pdf_page.dart';
 import 'package:proalbums/features/pdf/presentation/pages/pdf_adjust_image_page.dart';
@@ -224,6 +225,18 @@ GoRouter appRouter(Ref ref) {
         parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.viewerPattern,
         pageBuilder: viewerPage,
+      ),
+      // The viewer's video player (same player, nothing loads again).
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.videoPlayer,
+        builder: (context, state) {
+          final request = state.extra! as VideoPlayerRequest;
+          return VideoPlayerPage(
+            item: request.item,
+            rotationHeld: request.rotated,
+          );
+        },
       ),
     ],
   );

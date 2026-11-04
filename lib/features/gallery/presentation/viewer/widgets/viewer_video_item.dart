@@ -36,13 +36,15 @@ class ViewerVideoItem extends ConsumerWidget {
           playing: mine && s.isPlaying,
           started: mine && s.started,
           scrubbing: mine && s.isScrubbing,
+          fill: s.fill,
         );
       }),
     );
     final controller = view.controller;
     // The play button shows until the video was started (even if it is
     // already prepared underneath), and again whenever it is paused.
-    final showPlay = !view.playing &&
+    final showPlay =
+        !view.playing &&
         !view.scrubbing &&
         !(view.started && view.status == VideoStatus.loading);
 
@@ -60,7 +62,19 @@ class ViewerVideoItem extends ConsumerWidget {
             poster: poster,
             placeholder: placeholder,
           ),
-          if (controller != null)
+          if (controller != null && view.fill)
+            // "Crop to fit": fills the screen, the overflow is cut off.
+            ClipRect(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: controller.value.size.width,
+                  height: controller.value.size.height,
+                  child: RepaintBoundary(child: VideoPlayer(controller)),
+                ),
+              ),
+            )
+          else if (controller != null)
             Center(
               child: AspectRatio(
                 aspectRatio: controller.value.aspectRatio,
@@ -76,8 +90,9 @@ class ViewerVideoItem extends ConsumerWidget {
                 shape: const CircleBorder(),
                 child: InkWell(
                   customBorder: const CircleBorder(),
-                  onTap: () =>
-                      ref.read(videoPlaybackProvider.notifier).playOrToggle(item),
+                  onTap: () => ref
+                      .read(videoPlaybackProvider.notifier)
+                      .playOrToggle(item),
                   child: const Padding(
                     padding: EdgeInsets.all(16),
                     child: Icon(
@@ -94,9 +109,7 @@ class ViewerVideoItem extends ConsumerWidget {
               alignment: const Alignment(0, 0.35),
               child: Text(
                 'This video cannot be played.',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
+                style: Theme.of(context).textTheme.bodyMedium
                     ?.copyWith(color: context.colors.textSecondary),
               ),
             ),

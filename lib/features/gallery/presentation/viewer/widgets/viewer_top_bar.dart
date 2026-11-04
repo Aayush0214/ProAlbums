@@ -23,11 +23,16 @@ class ViewerTopBar extends ConsumerWidget {
     this.infoActive = false,
     this.onDelete,
     this.showActions = false,
+    this.onTools,
     super.key,
   });
 
   final MediaItem item;
   final bool showActions;
+
+  /// A video: the "video tools" button left of the heart (opens the video
+  /// player). null = none.
+  final VoidCallback? onTools;
 
   /// Opens / closes the Info card.
   final VoidCallback onInfo;
@@ -81,6 +86,13 @@ class ViewerTopBar extends ConsumerWidget {
                   ],
                 ),
               ),
+              if (item.isVideo && onTools != null)
+                IconButton(
+                  tooltip: 'Video tools',
+                  color: onSurface,
+                  icon: const Icon(LucideIcons.squarePlay),
+                  onPressed: onTools,
+                ),
               if (viewerShowsFavorite(mediaContext))
                 IconButton(
                   tooltip: isFavorite
