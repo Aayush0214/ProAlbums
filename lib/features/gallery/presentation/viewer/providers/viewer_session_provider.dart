@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:proalbums/features/gallery/domain/entities/media_details.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
 import 'package:proalbums/features/gallery/presentation/images/media_thumbnail_image.dart';
@@ -16,6 +17,7 @@ final class ViewerSessionData {
     this.albumId,
     this.imageLoader,
     this.videoSource,
+    this.detailsLoader,
     this.extraActions = const [],
   });
 
@@ -34,6 +36,9 @@ final class ViewerSessionData {
 
   /// Where a video is played from: null = the normal way.
   final String Function(MediaItem item)? videoSource;
+
+  /// Where the Info card gets its details: null = MediaStore.
+  final Future<MediaDetails?> Function(String id)? detailsLoader;
 
   /// Buttons the opener adds to the viewer's bar (a preview has no other
   /// bar), e.g. Convert PDF's "Crop & rotate". The gallery does not know

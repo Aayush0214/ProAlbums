@@ -185,4 +185,67 @@ final class MethodChannelVaultRepository implements VaultRepository {
   @override
   FutureResult<int> count() =>
       _call('count', (value) => (value as num?)?.toInt() ?? 0);
+
+  @override
+  FutureResult<List<VaultEntry>> list() => _call('list', (value) {
+    final rows = (value as List<Object?>?) ?? const [];
+    return [
+      for (final row in rows.cast<Map<Object?, Object?>>())
+        VaultEntry(
+          id: row['id']! as String,
+          name: (row['name'] as String?) ?? '',
+          video: row['video'] == true,
+          createdAt: DateTime.fromMillisecondsSinceEpoch(
+            (row['takenMs'] as num?)?.toInt() ?? 0,
+          ),
+          width: (row['width'] as num?)?.toInt() ?? 0,
+          height: (row['height'] as num?)?.toInt() ?? 0,
+          duration: Duration(
+            milliseconds: (row['durationMs'] as num?)?.toInt() ?? 0,
+          ),
+          sizeBytes: (row['size'] as num?)?.toInt() ?? 0,
+        ),
+    ];
+  });
+
+  @override
+  Future<Uint8List?> thumbnail(String id) async {
+    try {
+      return await _channel.invokeMethod<Uint8List>('thumbnail', {'id': id});
+    } on Object catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<Uint8List?> picture(String id, {required int maxLongEdge}) async {
+    try {
+      return await _channel.invokeMethod<Uint8List>('picture', {
+        'id': id,
+        'maxLongEdge': maxLongEdge,
+      });
+    } on Object catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<({String name, int width, int height, int sizeBytes})?> details(
+    String id,
+  ) async {
+    try {
+      final map = await _channel.invokeMapMethod<String, Object?>('details', {
+        'id': id,
+      });
+      if (map == null) return null;
+      return (
+        name: (map['name'] as String?) ?? '',
+        width: (map['width'] as num?)?.toInt() ?? 0,
+        height: (map['height'] as num?)?.toInt() ?? 0,
+        sizeBytes: (map['size'] as num?)?.toInt() ?? 0,
+      );
+    } on Object catch (_) {
+      return null;
+    }
+  }
 }

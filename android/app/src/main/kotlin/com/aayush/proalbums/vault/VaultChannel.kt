@@ -43,6 +43,11 @@ class VaultChannel(private val activity: Activity) : MethodChannel.MethodCallHan
     /** Also used to send Hide progress back to Dart. */
     private var channel: MethodChannel? = null
     private val hider = VaultHider(activity.contentResolver, folder)
+    private val viewer = VaultViewer(activity.contentResolver, folder)
+
+    /** Grid / viewer reads: their own threads, so thumbnails never wait
+     * behind a big picture or a Hide. */
+    private val readers = Executors.newFixedThreadPool(2)
 
     /** Hide waiting for the system delete request (originals). */
     private var pendingHide: List<VaultHider.Hidden>? = null
@@ -91,6 +96,22 @@ class VaultChannel(private val activity: Activity) : MethodChannel.MethodCallHan
             }
             "reset" -> run(result) { reset() }
             "count" -> run(result) { folder.countItems() }
+            "list" -> run(result) { withSession { viewer.list(it) } }
+            "thumbnail" -> read(result) {
+                withSession { dek -> viewer.thumbnail(call.argument<String>("id")!!.toLong(), dek) }
+            }
+            "picture" -> read(result) {
+                withSession { dek ->
+                    viewer.picture(
+                        call.argument<String>("id")!!.toLong(),
+                        dek,
+                        call.argument<Int>("maxLongEdge")!!,
+                    )
+                }
+            }
+            "details" -> read(result) {
+                withSession { dek -> viewer.details(call.argument<String>("id")!!.toLong(), dek) }
+            }
             "hide" -> hide(call, result)
             "biometricAvailable" -> result.success(biometricAvailable())
             "authenticateBiometric" -> authenticateBiometric(
@@ -99,6 +120,29 @@ class VaultChannel(private val activity: Activity) : MethodChannel.MethodCallHan
                 result,
             )
             else -> result.notImplemented()
+        }
+    }
+
+    /** Like [run], on the reader threads; a failure answers null (the
+     * tile / viewer just shows nothing). */
+    private fun read(result: MethodChannel.Result, work: () -> Any?) {
+        readers.execute {
+            val value = try {
+                work()
+            } catch (error: Exception) {
+                null
+            }
+            main.post { result.success(value) }
+        }
+    }
+
+    /** [work] with a COPY of the vault key (wiped after); locked = error. */
+    private fun <T> withSession(work: (ByteArray) -> T): T {
+        val dek = session?.copyOf() ?: throw VaultStateException("locked", "Unlock first")
+        try {
+            return work(dek)
+        } finally {
+            VaultCrypto.wipe(dek)
         }
     }
 

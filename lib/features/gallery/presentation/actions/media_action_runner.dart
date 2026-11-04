@@ -102,7 +102,9 @@ Future<bool> runMediaAction(
         MediaAction.contactPicture ||
         MediaAction.rotate ||
         MediaAction.screenMirroring ||
-        MediaAction.convertToH264:
+        MediaAction.convertToH264 ||
+        MediaAction.unhide ||
+        MediaAction.deleteHidden:
       // Each one is switched on by the phase that builds it.
       showComingSoon(context, action.label);
       return false;

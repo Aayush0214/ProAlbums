@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:proalbums/features/gallery/data/repositories/photo_manager_media_details_repository.dart';
@@ -7,6 +8,7 @@ import 'package:proalbums/features/gallery/domain/repositories/media_details_rep
 import 'package:proalbums/features/gallery/domain/usecases/get_media_details.dart';
 import 'package:proalbums/features/gallery/presentation/providers/media_providers.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/histogram.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'details_providers.g.dart';
@@ -22,6 +24,9 @@ GetMediaDetailsUseCase getMediaDetailsUseCase(Ref ref) =>
 /// Details of one item. Loaded when the Info card opens, dropped when it closes.
 @riverpod
 Future<MediaDetails?> mediaDetails(Ref ref, String id) async {
+  // The screen the viewer came from may hold its own details (the vault).
+  final own = ref.read(viewerSessionProvider).detailsLoader;
+  if (own != null) return own(id);
   final result = await ref.watch(getMediaDetailsUseCaseProvider)(id);
   return result.fold((failure) => null, (details) => details);
 }
@@ -30,16 +35,25 @@ Future<MediaDetails?> mediaDetails(Ref ref, String id) async {
 /// 96-pixel picture has about 9,000 pixels: instant).
 @riverpod
 Future<HistogramData?> mediaHistogram(Ref ref, String id) async {
-  final result = await ref.watch(getMediaThumbnailUseCaseProvider)(
-    ThumbnailRequest(id: id, size: 128),
-  );
-  final bytes = result.fold((failure) => null, (bytes) => bytes);
+  // Own pictures (trash, vault) come from the screen's loader.
+  final own = ref.read(viewerSessionProvider).imageLoader;
+  final Uint8List? bytes;
+  if (own != null) {
+    bytes = await own(id, 128);
+  } else {
+    final result = await ref.watch(getMediaThumbnailUseCaseProvider)(
+      ThumbnailRequest(id: id, size: 128),
+    );
+    bytes = result.fold((failure) => null, (bytes) => bytes);
+  }
   if (bytes == null) return null;
 
   final codec = await ui.instantiateImageCodec(bytes, targetWidth: 96);
   try {
     final frame = await codec.getNextFrame();
-    final data = await frame.image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    final data = await frame.image.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    );
     frame.image.dispose();
     if (data == null) return null;
     return HistogramData.fromRgba(data.buffer.asUint8List());

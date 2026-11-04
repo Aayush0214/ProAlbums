@@ -23,13 +23,16 @@ Future<void> openMediaViewer(
   ProviderListenable<List<MediaItem>>? items,
 }) {
   final scope = MediaScope.maybeOf(context);
-  ref.read(viewerSessionProvider.notifier).start(
+  ref
+      .read(viewerSessionProvider.notifier)
+      .start(
         ViewerSessionData(
           items: items ?? scope?.items ?? photosDisplayItemsProvider,
           mediaContext: scope?.mediaContext ?? MediaContext.library,
           albumId: scope?.albumId,
           imageLoader: scope?.thumbnailLoader,
           videoSource: scope?.videoSource,
+          detailsLoader: scope?.detailsLoader,
         ),
       );
   return context.push<void>(AppRoutes.viewer(id));

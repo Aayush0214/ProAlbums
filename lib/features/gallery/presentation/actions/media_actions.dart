@@ -19,6 +19,9 @@ enum MediaContext {
 
   /// Look only, no actions: the pages of a PDF being made (Convert PDF).
   preview,
+
+  /// The private vault ("Hidden photos"): only Unhide and Delete.
+  vault,
 }
 
 /// Every action a selection or the viewer can offer, in ONE list. An action
@@ -43,7 +46,11 @@ enum MediaAction {
   contactPicture('Contact profile picture'),
   rotate('Rotate'),
   screenMirroring('Screen Mirroring'),
-  convertToH264('Convert to standard codec (H.264)');
+  convertToH264('Convert to standard codec (H.264)'),
+  unhide('Unhide', icon: LucideIcons.eye),
+
+  /// Delete from the private vault (to Recently deleted, or for good).
+  deleteHidden('Delete', icon: LucideIcons.trash2);
 
   const MediaAction(this.label, {this.icon, this.destructive = false});
 
@@ -88,6 +95,9 @@ SelectionActions selectionActionsFor(MediaContext context) => switch (context) {
     bar: [MediaAction.restore, MediaAction.deleteForever],
   ),
   MediaContext.preview => const SelectionActions(bar: []),
+  MediaContext.vault => const SelectionActions(
+    bar: [MediaAction.unhide, MediaAction.deleteHidden],
+  ),
 };
 
 /// Is [action] ON for a selection with pictures and/or videos? Options that
@@ -110,7 +120,9 @@ bool isActionEnabled(
 /// The viewer's "More" menu: depends on the screen AND on the item (a video
 /// has its own list).
 List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
-  if (context == MediaContext.trash || context == MediaContext.preview) {
+  if (context == MediaContext.trash ||
+      context == MediaContext.preview ||
+      context == MediaContext.vault) {
     return const [];
   }
   if (item.isVideo) {
@@ -145,20 +157,21 @@ List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
 /// The viewer's own bar for a screen, or null = the normal bar (Share, Edit,
 /// Delete, More). Recently deleted only restores or deletes for good; a
 /// preview has no bar at all (empty list).
-List<MediaAction>? viewerBarActionsFor(MediaContext context) =>
-    switch (context) {
-      MediaContext.trash => const [
-        MediaAction.restore,
-        MediaAction.deleteForever,
-      ],
-      MediaContext.preview => const [],
-      MediaContext.library || MediaContext.album || MediaContext.search => null,
-    };
+List<MediaAction>? viewerBarActionsFor(
+  MediaContext context,
+) => switch (context) {
+  MediaContext.trash => const [MediaAction.restore, MediaAction.deleteForever],
+  MediaContext.preview => const [],
+  MediaContext.vault => const [MediaAction.unhide, MediaAction.deleteHidden],
+  MediaContext.library || MediaContext.album || MediaContext.search => null,
+};
 
 /// Heart (favourite) in the viewer: not for pictures in the trash, not in a
 /// preview.
 bool viewerShowsFavorite(MediaContext context) =>
-    context != MediaContext.trash && context != MediaContext.preview;
+    context != MediaContext.trash &&
+    context != MediaContext.preview &&
+    context != MediaContext.vault;
 
 /// Info button in the viewer: not in a preview (look only).
 bool viewerShowsInfo(MediaContext context) => context != MediaContext.preview;

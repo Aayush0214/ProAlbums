@@ -1,3 +1,6 @@
+import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_row.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_rows_builder.dart';
 import 'package:proalbums/features/vault/data/method_channel_vault_repository.dart';
 import 'package:proalbums/features/vault/data/native_vault_biometrics.dart';
 import 'package:proalbums/features/vault/domain/entities/vault_status.dart';
@@ -62,3 +65,49 @@ Future<int> hiddenCount(Ref ref) async {
   final result = await ref.read(vaultRepositoryProvider).count();
   return result.getOrElse((_) => 0);
 }
+
+/// Every hidden item (the vault page reads it while unlocked; dropped when
+/// the page closes).
+@riverpod
+Future<List<VaultEntry>> vaultEntries(Ref ref) async {
+  final result = await ref.read(vaultRepositoryProvider).list();
+  return result.getOrElse((_) => const []);
+}
+
+/// Gallery ids of hidden items start with this, so they never mix with
+/// real gallery ids (image cache, selection, viewer).
+const String vaultIdPrefix = 'vault:';
+
+/// The vault file id behind a vault MediaItem id.
+String vaultFileId(String mediaId) => mediaId.startsWith(vaultIdPrefix)
+    ? mediaId.substring(vaultIdPrefix.length)
+    : mediaId;
+
+/// The hidden items as the shared grid / viewer want them, newest first.
+@riverpod
+List<MediaItem> vaultMediaItems(Ref ref) {
+  final entries = ref.watch(vaultEntriesProvider).value ?? const [];
+  final items = [
+    for (final entry in entries)
+      MediaItem(
+        id: '$vaultIdPrefix${entry.id}',
+        type: entry.video ? MediaType.video : MediaType.image,
+        createdAt: entry.createdAt,
+        width: entry.width,
+        height: entry.height,
+        duration: entry.duration,
+      ),
+  ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  return items;
+}
+
+/// The vault grid: a fixed 4 columns, no date headers (like the system
+/// gallery's Hidden photos).
+@riverpod
+List<GalleryRow> vaultGalleryRows(Ref ref) => GalleryRowsBuilder.buildFlat(
+  items: ref.watch(vaultMediaItemsProvider),
+  columns: vaultGridColumns,
+  alignToEnd: false,
+);
+
+const int vaultGridColumns = 4;

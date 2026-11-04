@@ -112,6 +112,15 @@ class GalleryItemsRow extends ConsumerWidget {
                 label: scope.tileLabel?.call(items[i]),
                 load: load,
                 onTap: onTapOf(items[i]),
+                // Selecting: ⤢ still opens the viewer (not a one-tap picker).
+                onExpand: selecting && scope.pickMode != PickMode.single
+                    ? () => openMediaViewer(
+                        context,
+                        ref,
+                        id: items[i].id,
+                        items: viewerItems,
+                      )
+                    : null,
               ),
             ),
           ],

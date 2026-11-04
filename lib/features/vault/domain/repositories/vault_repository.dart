@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:fpdart/fpdart.dart';
 import 'package:proalbums/core/utils/typedefs.dart';
 import 'package:proalbums/features/vault/domain/entities/vault_status.dart';
@@ -72,6 +74,20 @@ abstract interface class VaultRepository {
 
   /// How many items are hidden.
   FutureResult<int> count();
+
+  /// Every hidden item (the vault must be unlocked).
+  FutureResult<List<VaultEntry>> list();
+
+  /// The grid picture (JPEG), null when there is none.
+  Future<Uint8List?> thumbnail(String id);
+
+  /// The viewer picture, long side at most [maxLongEdge] (JPEG).
+  Future<Uint8List?> picture(String id, {required int maxLongEdge});
+
+  /// Name, size and resolution for the Info card (never the path).
+  Future<({String name, int width, int height, int sizeBytes})?> details(
+    String id,
+  );
 }
 
 /// How the system fingerprint sheet ended.

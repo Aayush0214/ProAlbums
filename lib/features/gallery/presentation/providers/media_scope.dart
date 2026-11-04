@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:proalbums/features/gallery/domain/entities/media_details.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
 import 'package:proalbums/features/gallery/presentation/images/media_thumbnail_image.dart';
@@ -24,11 +25,12 @@ class MediaScope extends InheritedWidget {
     this.thumbnailLoader,
     this.tileLabel,
     this.videoSource,
+    this.detailsLoader,
     super.key,
   }) : assert(
-          pickMode != PickMode.single || onPick != null,
-          'A single picker needs onPick',
-        );
+         pickMode != PickMode.single || onPick != null,
+         'A single picker needs onPick',
+       );
 
   /// A tap on a picture (when not selecting): null = open the viewer. A
   /// screen without a viewer for its pictures does something else (e.g.
@@ -46,6 +48,11 @@ class MediaScope extends InheritedWidget {
   /// Where the viewer plays a video from: null = the normal address. (Videos
   /// in Android's trash need their own.)
   final String Function(MediaItem item)? videoSource;
+
+  /// Where the viewer's Info card gets its details: null = MediaStore.
+  /// (Hidden items have theirs in the vault; an empty path hides the Path
+  /// row.)
+  final Future<MediaDetails?> Function(String id)? detailsLoader;
 
   /// A screen that CHOOSES pictures instead of browsing them.
   final PickMode pickMode;
@@ -74,6 +81,9 @@ class MediaScope extends InheritedWidget {
 
   /// Recently deleted.
   static const String trash = 'trash';
+
+  /// The private vault ("Hidden photos").
+  static const String vault = 'vault';
 
   /// A picker screen ("Select items", "Change cover"...).
   static String picker(String name) => 'picker:$name';

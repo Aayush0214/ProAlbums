@@ -87,3 +87,29 @@ final class HideResult {
   /// The person said no to the system delete request: nothing changed.
   final bool cancelled;
 }
+
+/// One hidden item as the vault lists it (from its encrypted header).
+final class VaultEntry {
+  const VaultEntry({
+    required this.id,
+    required this.name,
+    required this.video,
+    required this.createdAt,
+    required this.width,
+    required this.height,
+    required this.duration,
+    required this.sizeBytes,
+  });
+
+  /// The vault file's id (not a gallery id).
+  final String id;
+  final String name;
+  final bool video;
+  final DateTime createdAt;
+
+  /// Already upright (turned by the picture's orientation).
+  final int width;
+  final int height;
+  final Duration duration;
+  final int sizeBytes;
+}

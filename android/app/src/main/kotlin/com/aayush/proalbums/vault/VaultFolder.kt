@@ -83,6 +83,24 @@ class VaultFolder(private val resolver: ContentResolver) {
         resolver.delete(uri, null, null)
     }
 
+    /** Our hidden items (.pav files): their MediaStore ids. */
+    fun itemIds(): List<Long> {
+        val ids = mutableListOf<Long>()
+        resolver.query(
+            collection,
+            arrayOf(MediaStore.MediaColumns._ID),
+            "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND " +
+                "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ?",
+            arrayOf(RELATIVE_PATH, "%.pav"),
+            null,
+        )?.use { cursor ->
+            while (cursor.moveToNext()) ids += cursor.getLong(0)
+        }
+        return ids
+    }
+
+    fun uriOf(id: Long): Uri = ContentUris.withAppendedId(collection, id)
+
     /** How many hidden items (.pav files of ours) the folder holds. */
     fun countItems(): Int =
         resolver.query(

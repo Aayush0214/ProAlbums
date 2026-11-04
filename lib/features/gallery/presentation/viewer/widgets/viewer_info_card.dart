@@ -24,7 +24,9 @@ class ViewerInfoCard extends ConsumerWidget {
       constraints: const BoxConstraints(maxWidth: 420),
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: context.colorScheme.surfaceContainerHigh.withValues(alpha: 0.95),
+          color: context.colorScheme.surfaceContainerHigh.withValues(
+            alpha: 0.95,
+          ),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Padding(
@@ -74,7 +76,9 @@ class _Rows extends StatelessWidget {
         // PNG has no EXIF, but it still has brightness). A video's graph is
         // made from its thumbnail frame.
         _ShootingBox(item: item, details: d),
-        _Row(label: 'Path', value: d?.path ?? '...'),
+        // No path for hidden items (privacy): their details have none.
+        if (d == null || d.path.isNotEmpty)
+          _Row(label: 'Path', value: d?.path ?? '...'),
       ],
     );
   }
@@ -96,10 +100,16 @@ class _Row extends StatelessWidget {
         children: [
           SizedBox(
             width: 84,
-            child: Text(label, style: style?.copyWith(color: context.colors.textSecondary)),
+            child: Text(
+              label,
+              style: style?.copyWith(color: context.colors.textSecondary),
+            ),
           ),
           Expanded(
-            child: Text(value, style: style?.copyWith(color: context.colors.textPrimary)),
+            child: Text(
+              value,
+              style: style?.copyWith(color: context.colors.textPrimary),
+            ),
           ),
         ],
       ),
@@ -121,9 +131,7 @@ class _ShootingBox extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final histogramAsync = ref.watch(mediaHistogramProvider(item.id));
     final histogram = histogramAsync.value;
-    final small = Theme.of(context)
-        .textTheme
-        .bodySmall
+    final small = Theme.of(context).textTheme.bodySmall
         ?.copyWith(color: context.colors.textSecondary);
 
     final d = details;
@@ -181,7 +189,12 @@ class _ShootingBox extends ConsumerWidget {
                   width: double.infinity,
                   child: histogram == null
                       ? null
-                      : CustomPaint(painter: _HistogramPainter(histogram, guideColor: context.colors.dividerSubtle)),
+                      : CustomPaint(
+                          painter: _HistogramPainter(
+                            histogram,
+                            guideColor: context.colors.dividerSubtle,
+                          ),
+                        ),
                 ),
               ),
               if (numbers.isNotEmpty)
@@ -260,5 +273,6 @@ class _HistogramPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_HistogramPainter old) => old.data != data || old.guideColor != guideColor;
+  bool shouldRepaint(_HistogramPainter old) =>
+      old.data != data || old.guideColor != guideColor;
 }
