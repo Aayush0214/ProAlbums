@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:proalbums/core/database/tables/cleanup_fingerprints.dart';
 import 'package:proalbums/core/database/tables/compressed_media.dart';
 import 'package:proalbums/core/database/tables/favorites.dart';
 
@@ -13,14 +14,14 @@ part 'app_database.g.dart';
 ///
 /// Tables are added feature by feature. Every time a table changes: bump
 /// [schemaVersion] and add a step in `onUpgrade`.
-@DriftDatabase(tables: [Favorites, CompressedMedia])
+@DriftDatabase(tables: [Favorites, CompressedMedia, CleanupFingerprints])
 class AppDatabase extends _$AppDatabase {
   /// Pass an in-memory executor in tests: `AppDatabase(NativeDatabase.memory())`.
   AppDatabase([QueryExecutor? executor])
       : super(executor ?? driftDatabase(name: 'pro_album'));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -35,6 +36,8 @@ class AppDatabase extends _$AppDatabase {
           }
           // Version 4: copies made by Compress size (grid badge).
           if (from < 4) await m.createTable(compressedMedia);
+          // Version 5: Cleanup suggestions fingerprints.
+          if (from < 5) await m.createTable(cleanupFingerprints);
         },
       );
 }

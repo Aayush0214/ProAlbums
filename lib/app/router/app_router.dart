@@ -10,6 +10,10 @@ import 'package:proalbums/features/albums/presentation/pages/albums_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/change_cover_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/move_copy_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/other_albums_page.dart';
+import 'package:proalbums/features/cleanup/domain/cleanup_rules.dart';
+import 'package:proalbums/features/cleanup/presentation/cleanup_groups_page.dart';
+import 'package:proalbums/features/cleanup/presentation/cleanup_page.dart';
+import 'package:proalbums/features/cleanup/presentation/cleanup_preview_page.dart';
 import 'package:proalbums/features/collage/presentation/collage_page.dart';
 import 'package:proalbums/features/compress/presentation/compress_video_page.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
@@ -258,6 +262,24 @@ GoRouter appRouter(Ref ref) {
             _ => const <MediaItem>[],
           },
         ),
+      ),
+      // Albums > Cleanup suggestions, its sets, the big preview.
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.cleanup,
+        builder: (context, state) => const CleanupPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.cleanupGroups,
+        builder: (context, state) =>
+            CleanupGroupsPage(kind: state.extra! as CleanupKind),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.cleanupPreview,
+        builder: (context, state) =>
+            CleanupPreviewPage(request: state.extra! as CleanupPreviewRequest),
       ),
       // Slideshow from the viewer (its list, from the picture on screen).
       GoRoute(

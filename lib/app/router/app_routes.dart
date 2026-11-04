@@ -49,6 +49,12 @@ abstract final class AppRoutes {
   /// saved collage's id (or null).
   static const String collage = '/collage';
 
+  /// Albums > Cleanup suggestions; its sets (`extra` = CleanupKind) and the
+  /// big preview of a picture (`extra` = CleanupPreviewRequest).
+  static const String cleanup = '/cleanup';
+  static const String cleanupGroups = '/cleanup/sets';
+  static const String cleanupPreview = '/cleanup/preview';
+
   // Pages with a parameter. The *Pattern is for the router, the function
   // builds the real path (ids are encoded, so any id is safe).
   static const String albumPattern = '/album/:albumId';
