@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/core/widgets/theme_selector_card.dart';
 import 'package:proalbums/features/trash/presentation/widgets/recently_deleted_setting_tile.dart';
+import 'package:proalbums/features/vault/presentation/widgets/vault_settings_tiles.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -92,26 +93,9 @@ class SettingsScreen extends ConsumerWidget {
                     onTap: () {},
                   ),
                   const Divider(height: 1),
-                  ListTile(
-                    title: const Text('Hidden photos'),
-                    subtitle: const Text('Show hidden images and videos.'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Encrypted', style: context.textTheme.bodySmall),
-                        const SizedBox(width: 4),
-                        Icon(LucideIcons.chevronRight, size: 18, color: ext.textSecondary),
-                      ],
-                    ),
-                    onTap: () {},
-                  ),
+                  const HiddenPhotosSettingTile(),
                   const Divider(height: 1),
-                  SwitchListTile(
-                    title: const Text('Password for hidden photos'),
-                    subtitle: const Text('Privacy password is required for verification'),
-                    value: true,
-                    onChanged: (_) {},
-                  ),
+                  const VaultPasswordSettingTile(),
                   const Divider(height: 1),
                   ListTile(
                     title: const Text('Check for updates'),

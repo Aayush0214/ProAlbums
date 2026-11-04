@@ -23,6 +23,13 @@ abstract final class AppRoutes {
   /// Adjust image (the pages of the PDF being made, as a grid).
   static const String pdfAdjustImage = '/convert-pdf/adjust';
 
+  /// Private vault: "Hidden photos" (only from Settings) and its security
+  /// steps. The Recovery Key goes as `extra` (a String), never in the URL.
+  static const String vault = '/vault';
+  static const String vaultSetup = '/vault/setup';
+  static const String vaultRecoveryKey = '/vault/recovery-key';
+  static const String vaultForgot = '/vault/forgot';
+
   // Pages with a parameter. The *Pattern is for the router, the function
   // builds the real path (ids are encoded, so any id is safe).
   static const String albumPattern = '/album/:albumId';

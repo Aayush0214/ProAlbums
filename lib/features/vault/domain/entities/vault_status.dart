@@ -67,3 +67,23 @@ final class VaultCheck {
   /// Too many wrong tries: wait this long before the next one.
   final Duration wait;
 }
+
+/// How a Hide ended.
+final class HideResult {
+  const HideResult({
+    required this.hidden,
+    required this.failed,
+    this.cancelled = false,
+  });
+
+  const HideResult.cancelled() : hidden = 0, failed = 0, cancelled = true;
+
+  /// Now in the vault (originals deleted).
+  final int hidden;
+
+  /// Could not be read or encrypted (left where they were).
+  final int failed;
+
+  /// The person said no to the system delete request: nothing changed.
+  final bool cancelled;
+}

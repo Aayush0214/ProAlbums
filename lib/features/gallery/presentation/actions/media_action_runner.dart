@@ -8,6 +8,7 @@ import 'package:proalbums/features/gallery/presentation/providers/share_provider
 import 'package:proalbums/features/pdf/presentation/widgets/print_pictures_flow.dart';
 import 'package:proalbums/features/trash/presentation/widgets/delete_flow.dart';
 import 'package:proalbums/features/trash/presentation/widgets/trash_actions.dart';
+import 'package:proalbums/features/vault/presentation/vault_flows.dart';
 import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 
 /// Runs [action] on [items] — from the selection bar OR the viewer. This is
@@ -87,8 +88,12 @@ Future<bool> runMediaAction(
       await printPictures(context, ref, items);
       return false;
 
+    case MediaAction.hide:
+      // The vault feature: check (if the password is on), encrypt, then
+      // Android asks to delete the originals.
+      return hideMediaItems(context, ref, items);
+
     case MediaAction.create ||
-        MediaAction.hide ||
         MediaAction.setAsWallpaper ||
         MediaAction.googleLens ||
         MediaAction.rename ||

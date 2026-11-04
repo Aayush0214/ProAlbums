@@ -50,4 +50,52 @@ abstract interface class VaultRepository {
 
   /// The settings switch (the vault must be open = verified first).
   FutureResult<Unit> setPasswordEnabled({required bool enabled});
+
+  /// No screenshots / recording, blank in Recent apps (vault and security
+  /// screens only).
+  Future<void> setSecure({required bool secure});
+
+  /// The Recovery Key on the clipboard, marked sensitive. true = Android
+  /// shows its own "Copied" message.
+  FutureResult<bool> copyRecoveryKey(String recoveryKey);
+
+  /// Reset vault: every hidden item deleted for good, fresh start.
+  FutureResult<Unit> reset();
+
+  /// Hide (the vault must be unlocked): each item encrypted into the vault
+  /// folder ([onProgress] after each), then ONE system request to delete
+  /// the originals. [items] = MediaStore id + whether it is a video.
+  FutureResult<HideResult> hide(
+    List<({String id, bool video})> items, {
+    void Function(int done, int total)? onProgress,
+  });
+
+  /// How many items are hidden.
+  FutureResult<int> count();
+}
+
+/// How the system fingerprint sheet ended.
+enum BiometricResult {
+  /// Recognised.
+  success,
+
+  /// The sheet's "Use password" button: show the PIN card.
+  usePassword,
+
+  /// Back / tap outside: close everything.
+  cancelled,
+
+  /// Locked out, sensor busy...: the PIN is the way.
+  error,
+}
+
+/// The phone's fingerprint check (Android BiometricPrompt, strong
+/// biometrics only — never the phone's own lock screen PIN).
+abstract interface class VaultBiometrics {
+  /// The phone can check a fingerprint (hardware + one enrolled).
+  Future<bool> available();
+
+  /// The system sheet alone, titled "Verify fingerprint", with a
+  /// "Use password" button.
+  Future<BiometricResult> authenticate();
 }

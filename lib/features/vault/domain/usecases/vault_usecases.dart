@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:proalbums/core/error/failures.dart';
 import 'package:proalbums/core/utils/typedefs.dart';
+import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/vault/domain/entities/vault_status.dart';
 import 'package:proalbums/features/vault/domain/repositories/vault_repository.dart';
 import 'package:proalbums/features/vault/domain/vault_rules.dart';
@@ -125,5 +126,22 @@ final class ResetPinWithRecoveryKeyUseCase {
       recoveryKey: recoveryKey,
       pin: pin,
     );
+  }
+}
+
+/// Hide the chosen pictures / videos into the vault (unlocked first).
+final class HideMediaUseCase {
+  const HideMediaUseCase(this._repository);
+
+  final VaultRepository _repository;
+
+  FutureResult<HideResult> call(
+    List<MediaItem> items, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    if (items.isEmpty) return left(const MediaFailure('Nothing to hide.'));
+    return _repository.hide([
+      for (final item in items) (id: item.id, video: item.isVideo),
+    ], onProgress: onProgress);
   }
 }

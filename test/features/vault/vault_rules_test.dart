@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:proalbums/core/error/failures.dart';
 import 'package:proalbums/core/utils/typedefs.dart';
+import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/vault/domain/entities/vault_status.dart';
 import 'package:proalbums/features/vault/domain/repositories/vault_repository.dart';
 import 'package:proalbums/features/vault/domain/usecases/vault_usecases.dart';
@@ -47,6 +48,16 @@ final class _FakeVault implements VaultRepository {
   }) async {
     calls.add('reset-key $pin');
     return right(const VaultCheck(ok: true));
+  }
+
+  @override
+  FutureResult<HideResult> hide(
+    List<({String id, bool video})> items, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    calls.add('hide ${items.map((i) => '${i.id}:${i.video}').join(',')}');
+    onProgress?.call(items.length, items.length);
+    return right(HideResult(hidden: items.length, failed: 0));
   }
 
   @override
@@ -160,6 +171,35 @@ void main() {
       );
       expect(good.isRight(), isTrue);
       expect(vault.calls, ['reset-key 111111']);
+    });
+  });
+
+  group('Hide', () {
+    MediaItem item(String id, {bool video = false}) => MediaItem(
+      id: id,
+      type: video ? MediaType.video : MediaType.image,
+      createdAt: DateTime(2026, 11, 4),
+      width: 10,
+      height: 10,
+    );
+
+    test('nothing to hide is refused without asking the vault', () async {
+      final vault = _FakeVault();
+      final result = await HideMediaUseCase(vault)([]);
+      expect(result.isLeft(), isTrue);
+      expect(vault.calls, isEmpty);
+    });
+
+    test('ids and kinds go to the vault, progress comes back', () async {
+      final vault = _FakeVault();
+      final seen = <(int, int)>[];
+      final result = await HideMediaUseCase(vault)([
+        item('7'),
+        item('9', video: true),
+      ], onProgress: (done, total) => seen.add((done, total)));
+      expect(result.getOrElse((_) => const HideResult.cancelled()).hidden, 2);
+      expect(vault.calls, ['hide 7:false,9:true']);
+      expect(seen, [(2, 2)]);
     });
   });
 }

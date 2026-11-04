@@ -123,4 +123,66 @@ final class MethodChannelVaultRepository implements VaultRepository {
   @override
   FutureResult<Unit> setPasswordEnabled({required bool enabled}) =>
       _call('setPasswordEnabled', (_) => unit, arguments: {'enabled': enabled});
+
+  @override
+  Future<void> setSecure({required bool secure}) async {
+    await _call('setSecure', (_) => unit, arguments: {'secure': secure});
+  }
+
+  @override
+  FutureResult<bool> copyRecoveryKey(String recoveryKey) => _call(
+    'copySensitive',
+    (value) => value == true,
+    arguments: {'text': recoveryKey},
+    failure: 'Could not copy the Recovery Key.',
+  );
+
+  @override
+  FutureResult<Unit> reset() => _call(
+    'reset',
+    (_) => unit,
+    failure: 'Could not reset the private vault.',
+  );
+
+  @override
+  FutureResult<HideResult> hide(
+    List<({String id, bool video})> items, {
+    void Function(int done, int total)? onProgress,
+  }) async {
+    // Progress comes back as calls from the native side.
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'hideProgress' && onProgress != null) {
+        final map = call.arguments as Map<Object?, Object?>;
+        onProgress(
+          (map['done'] as num?)?.toInt() ?? 0,
+          (map['total'] as num?)?.toInt() ?? items.length,
+        );
+      }
+    });
+    try {
+      return await _call(
+        'hide',
+        (value) {
+          final map = (value as Map<Object?, Object?>?) ?? const {};
+          if (map['status'] == 'cancelled') return const HideResult.cancelled();
+          return HideResult(
+            hidden: (map['hidden'] as num?)?.toInt() ?? 0,
+            failed: (map['failed'] as num?)?.toInt() ?? 0,
+          );
+        },
+        arguments: {
+          'items': [
+            for (final item in items) {'id': item.id, 'video': item.video},
+          ],
+        },
+        failure: 'Could not hide the selected items.',
+      );
+    } finally {
+      _channel.setMethodCallHandler(null);
+    }
+  }
+
+  @override
+  FutureResult<int> count() =>
+      _call('count', (value) => (value as num?)?.toInt() ?? 0);
 }

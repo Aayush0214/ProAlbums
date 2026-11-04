@@ -4,12 +4,15 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import com.aayush.proalbums.vault.VaultChannel
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 
-class MainActivity : FlutterActivity() {
+// FragmentActivity: the fingerprint dialog (local_auth, BiometricPrompt)
+// needs it.
+class MainActivity : FlutterFragmentActivity() {
     private lateinit var trashChannel: TrashChannel
     private lateinit var folderChannel: FolderChannel
+    private lateinit var vaultChannel: VaultChannel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,7 +34,8 @@ class MainActivity : FlutterActivity() {
         StorageChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         ClipboardChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         DocumentChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
-        VaultChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
+        vaultChannel = VaultChannel(this)
+        vaultChannel.register(flutterEngine.dartExecutor.binaryMessenger)
     }
 
     @Deprecated("Flutter still delivers system-screen results this way")
@@ -41,6 +45,9 @@ class MainActivity : FlutterActivity() {
         ) return
         if (::folderChannel.isInitialized &&
             folderChannel.onActivityResult(requestCode, resultCode)
+        ) return
+        if (::vaultChannel.isInitialized &&
+            vaultChannel.onActivityResult(requestCode, resultCode)
         ) return
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)

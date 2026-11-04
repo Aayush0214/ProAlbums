@@ -83,6 +83,35 @@ class VaultFolder(private val resolver: ContentResolver) {
         resolver.delete(uri, null, null)
     }
 
+    /** How many hidden items (.pav files of ours) the folder holds. */
+    fun countItems(): Int =
+        resolver.query(
+            collection,
+            arrayOf(MediaStore.MediaColumns._ID),
+            "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND " +
+                "${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ?",
+            arrayOf(RELATIVE_PATH, "%.pav"),
+            null,
+        )?.use { it.count } ?: 0
+
+    /** Every file of ours in the vault folder (Reset vault). Returns how many. */
+    fun deleteAll(): Int {
+        var deleted = 0
+        resolver.query(
+            collection,
+            arrayOf(MediaStore.MediaColumns._ID),
+            "${MediaStore.MediaColumns.RELATIVE_PATH} = ?",
+            arrayOf(RELATIVE_PATH),
+            null,
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val uri = ContentUris.withAppendedId(collection, cursor.getLong(0))
+                deleted += resolver.delete(uri, null, null)
+            }
+        }
+        return deleted
+    }
+
     companion object {
         const val RELATIVE_PATH = "Documents/ProAlbums Vault/"
         const val KEY_FILE = "vault.key"

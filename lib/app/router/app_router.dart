@@ -23,6 +23,10 @@ import 'package:proalbums/features/search/presentation/pages/search_page.dart';
 import 'package:proalbums/features/settings/presentation/screens/settings_screen.dart';
 import 'package:proalbums/features/storage/presentation/pages/storage_analysis_page.dart';
 import 'package:proalbums/features/trash/presentation/pages/recently_deleted_page.dart';
+import 'package:proalbums/features/vault/presentation/pages/vault_forgot_page.dart';
+import 'package:proalbums/features/vault/presentation/pages/vault_page.dart';
+import 'package:proalbums/features/vault/presentation/pages/vault_recovery_key_page.dart';
+import 'package:proalbums/features/vault/presentation/pages/vault_setup_page.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'app_router.g.dart';
@@ -114,6 +118,29 @@ GoRouter appRouter(Ref ref) {
         parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.recentlyDeleted,
         builder: (context, state) => const RecentlyDeletedPage(),
+      ),
+      // Private vault (secure screens; see the vault feature).
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.vault,
+        builder: (context, state) => const VaultPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.vaultSetup,
+        builder: (context, state) => const VaultSetupPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.vaultRecoveryKey,
+        builder: (context, state) => VaultRecoveryKeyPage(
+          recoveryKey: state.extra is String ? state.extra! as String : '',
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.vaultForgot,
+        builder: (context, state) => const VaultForgotPage(),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

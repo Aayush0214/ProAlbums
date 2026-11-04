@@ -1,8 +1,18 @@
 package com.aayush.proalbums.vault
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
+import android.hardware.biometrics.BiometricManager
+import android.hardware.biometrics.BiometricPrompt
+import android.os.Build
+import android.os.CancellationSignal
 import android.os.Handler
 import android.os.Looper
+import android.os.PersistableBundle
+import android.provider.MediaStore
+import android.view.WindowManager
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -30,8 +40,17 @@ class VaultChannel(private val activity: Activity) : MethodChannel.MethodCallHan
     @Volatile
     private var session: ByteArray? = null
 
+    /** Also used to send Hide progress back to Dart. */
+    private var channel: MethodChannel? = null
+    private val hider = VaultHider(activity.contentResolver, folder)
+
+    /** Hide waiting for the system delete request (originals). */
+    private var pendingHide: List<VaultHider.Hidden>? = null
+    private var pendingHideTotal = 0
+    private var pendingHideResult: MethodChannel.Result? = null
+
     fun register(messenger: BinaryMessenger) {
-        MethodChannel(messenger, CHANNEL).setMethodCallHandler(this)
+        channel = MethodChannel(messenger, CHANNEL).also { it.setMethodCallHandler(this) }
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -62,6 +81,23 @@ class VaultChannel(private val activity: Activity) : MethodChannel.MethodCallHan
             "setPasswordEnabled" -> run(result) {
                 setPasswordEnabled(call.argument("enabled")!!)
             }
+            "setSecure" -> {
+                setSecure(call.argument("secure")!!)
+                result.success(null)
+            }
+            "copySensitive" -> {
+                copySensitive(call.argument("text")!!)
+                result.success(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+            }
+            "reset" -> run(result) { reset() }
+            "count" -> run(result) { folder.countItems() }
+            "hide" -> hide(call, result)
+            "biometricAvailable" -> result.success(biometricAvailable())
+            "authenticateBiometric" -> authenticateBiometric(
+                call.argument("title")!!,
+                call.argument("usePassword")!!,
+                result,
+            )
             else -> result.notImplemented()
         }
     }
@@ -70,7 +106,8 @@ class VaultChannel(private val activity: Activity) : MethodChannel.MethodCallHan
     private fun run(result: MethodChannel.Result, work: () -> Any?) {
         worker.execute {
             try {
-                val value = work()
+                // Unit (no answer) cannot cross the channel: send null.
+                val value = work().takeUnless { it is Unit }
                 main.post { result.success(value) }
             } catch (error: VaultFormatException) {
                 main.post { result.error("vault_format", error.message, null) }
@@ -215,6 +252,180 @@ class VaultChannel(private val activity: Activity) : MethodChannel.MethodCallHan
         VaultCrypto.wipe(old)
     }
 
+    /**
+     * FLAG_SECURE while vault / security screens are open: no screenshots,
+     * no screen recording, and a blank card in Recent apps.
+     */
+    private fun setSecure(secure: Boolean) {
+        if (secure) {
+            activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+    }
+
+    /**
+     * The Recovery Key on the clipboard, marked sensitive (Android 13+ then
+     * hides it in the clipboard preview and keyboard suggestions).
+     */
+    private fun copySensitive(text: String) {
+        val clip = ClipData.newPlainText("Recovery Key", text)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            clip.description.extras = PersistableBundle().apply {
+                putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+            }
+        }
+        activity.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
+    }
+
+    /**
+     * Reset vault (PIN, answers and Recovery Key all lost): every vault file
+     * this app made is deleted, the phone state erased, a fresh start.
+     */
+    private fun reset() {
+        lock()
+        folder.deleteAll()
+        state().erase()
+    }
+
+    /**
+     * Hide [items] ({id, video}): encrypt each into the vault folder
+     * (progress "hideProgress" {done, total}), then ONE system request to
+     * delete the originals. Answers {status: "hidden", hidden, failed} or
+     * {status: "cancelled"} (nothing changed: the vault copies are removed).
+     */
+    private fun hide(call: MethodCall, result: MethodChannel.Result) {
+        val dek = session?.copyOf()
+        if (dek == null) {
+            result.error("locked", "Unlock first", null)
+            return
+        }
+        val sources = call.argument<List<Map<String, Any>>>("items").orEmpty().mapNotNull {
+            val id = (it["id"] as? String)?.toLongOrNull() ?: return@mapNotNull null
+            VaultHider.Source(id, it["video"] == true)
+        }
+        worker.execute {
+            val hidden = try {
+                hider.encryptAll(sources, dek) { done, total ->
+                    main.post {
+                        channel?.invokeMethod("hideProgress", mapOf("done" to done, "total" to total))
+                    }
+                }
+            } finally {
+                VaultCrypto.wipe(dek)
+            }
+            main.post { askDeleteOriginals(hidden, sources.size, result) }
+        }
+    }
+
+    private fun askDeleteOriginals(
+        hidden: List<VaultHider.Hidden>,
+        total: Int,
+        result: MethodChannel.Result,
+    ) {
+        if (hidden.isEmpty()) {
+            result.success(mapOf("status" to "hidden", "hidden" to 0, "failed" to total))
+            return
+        }
+        pendingHideResult?.success(mapOf("status" to "cancelled"))
+        pendingHide = hidden
+        pendingHideTotal = total
+        pendingHideResult = result
+        try {
+            val request = MediaStore.createDeleteRequest(
+                activity.contentResolver,
+                hidden.map { it.original },
+            )
+            activity.startIntentSenderForResult(
+                request.intentSender, REQUEST_DELETE, null, 0, 0, 0,
+            )
+        } catch (error: Exception) {
+            finishHide(allowed = false)
+        }
+    }
+
+    /** The system delete request came back. true = it was ours. */
+    fun onActivityResult(requestCode: Int, resultCode: Int): Boolean {
+        if (requestCode != REQUEST_DELETE) return false
+        finishHide(allowed = resultCode == Activity.RESULT_OK)
+        return true
+    }
+
+    private fun finishHide(allowed: Boolean) {
+        val hidden = pendingHide ?: return
+        val result = pendingHideResult
+        val total = pendingHideTotal
+        pendingHide = null
+        pendingHideResult = null
+        if (allowed) {
+            result?.success(
+                mapOf(
+                    "status" to "hidden",
+                    "hidden" to hidden.size,
+                    "failed" to total - hidden.size,
+                ),
+            )
+        } else {
+            // Nothing may change: remove the vault copies again.
+            worker.execute {
+                hider.rollback(hidden)
+                main.post { result?.success(mapOf("status" to "cancelled")) }
+            }
+        }
+    }
+
+    /** A strong biometric (fingerprint...) is set up and usable. */
+    private fun biometricAvailable(): Boolean =
+        activity.getSystemService(BiometricManager::class.java)
+            .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) ==
+            BiometricManager.BIOMETRIC_SUCCESS
+
+    /**
+     * The system fingerprint sheet, alone (no app card behind it). Its button
+     * is [usePassword] ("Use password"). Answers "ok", "usePassword" (that
+     * button), "cancelled" (back / tap outside) or "error" (locked out,
+     * sensor busy...: the PIN is the way then).
+     */
+    private fun authenticateBiometric(
+        title: String,
+        usePassword: String,
+        result: MethodChannel.Result,
+    ) {
+        var answered = false
+        fun answer(value: String) {
+            if (answered) return
+            answered = true
+            result.success(value)
+        }
+        val prompt = BiometricPrompt.Builder(activity)
+            .setTitle(title)
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+            .setNegativeButton(usePassword, activity.mainExecutor) { _, _ ->
+                answer("usePassword")
+            }
+            .build()
+        prompt.authenticate(
+            CancellationSignal(),
+            activity.mainExecutor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(
+                    authResult: BiometricPrompt.AuthenticationResult,
+                ) = answer("ok")
+
+                override fun onAuthenticationError(code: Int, message: CharSequence) {
+                    answer(
+                        when (code) {
+                            BiometricPrompt.BIOMETRIC_ERROR_USER_CANCELED,
+                            BiometricPrompt.BIOMETRIC_ERROR_CANCELED -> "cancelled"
+                            else -> "error"
+                        },
+                    )
+                }
+                // A wrong finger: the sheet says so itself and stays open.
+            },
+        )
+    }
+
     /** Wipes the DEK from memory (auto-lock, leaving the vault). */
     fun lock() {
         val old = session
@@ -224,6 +435,7 @@ class VaultChannel(private val activity: Activity) : MethodChannel.MethodCallHan
 
     private companion object {
         const val CHANNEL = "com.aayush.proalbums/vault"
+        const val REQUEST_DELETE = 7203
     }
 }
 
