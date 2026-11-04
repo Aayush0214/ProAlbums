@@ -30,7 +30,7 @@ enum MediaContext {
 enum MediaAction {
   share('Share', icon: LucideIcons.share2),
   moveCopy('Move/Copy', icon: LucideIcons.folderInput),
-  create('Create', icon: LucideIcons.squarePen),
+  collage('Collage', icon: LucideIcons.layoutDashboard),
   delete('Delete', icon: LucideIcons.trash2),
   restore('Restore', icon: LucideIcons.rotateCcw),
   deleteForever('Delete', icon: LucideIcons.trash2, destructive: true),
@@ -79,7 +79,7 @@ SelectionActions selectionActionsFor(MediaContext context) => switch (context) {
     bar: [
       MediaAction.share,
       MediaAction.moveCopy,
-      MediaAction.create,
+      MediaAction.collage,
       MediaAction.delete,
     ],
     more: [
@@ -103,17 +103,25 @@ SelectionActions selectionActionsFor(MediaContext context) => switch (context) {
 ///  - Copy to clipboard, Convert PDF and Print: ONLY pictures (one video in the
 ///    selection turns them off: they cannot do anything with a video, the
 ///    system gallery's PDF/PPT even says "Images only"),
+///  - Collage: only pictures AND at least 2 ([count]; more than 9 says so
+///    when pressed),
 ///  - everything else (Hide...): always.
 bool isActionEnabled(
   MediaAction action, {
   required bool hasImage,
   required bool hasVideo,
+  int count = 1,
 }) => switch (action) {
   MediaAction.copyToClipboard ||
   MediaAction.convertPdf ||
   MediaAction.print => hasImage && !hasVideo,
+  MediaAction.collage => hasImage && !hasVideo && count >= 2,
   _ => true,
 };
+
+/// Bar buttons whose "on" depends on WHAT is selected (not only "anything").
+bool actionDependsOnSelection(MediaAction action) =>
+    action == MediaAction.collage;
 
 /// The viewer's "More" menu: depends on the screen AND on the item (a video
 /// has its own list).

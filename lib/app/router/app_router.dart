@@ -10,6 +10,7 @@ import 'package:proalbums/features/albums/presentation/pages/albums_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/change_cover_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/move_copy_page.dart';
 import 'package:proalbums/features/albums/presentation/pages/other_albums_page.dart';
+import 'package:proalbums/features/collage/presentation/collage_page.dart';
 import 'package:proalbums/features/compress/presentation/compress_video_page.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/pages/photos_page.dart';
@@ -246,6 +247,17 @@ GoRouter appRouter(Ref ref) {
         path: AppRoutes.compressVideo,
         builder: (context, state) =>
             CompressVideoPage(request: state.extra! as CompressVideoRequest),
+      ),
+      // Grid > Collage; pops with the saved collage's id.
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.collage,
+        builder: (context, state) => CollagePage(
+          items: switch (state.extra) {
+            final List<MediaItem> items => items,
+            _ => const <MediaItem>[],
+          },
+        ),
       ),
       // Slideshow from the viewer (its list, from the picture on screen).
       GoRoute(

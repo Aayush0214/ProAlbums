@@ -82,10 +82,22 @@ class _BarAction extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Only "anything selected?" rebuilds the button.
-    final enabled = ref.watch(
-      mediaSelectionOf(context).select((s) => s.count > 0),
-    );
+    // Only "anything selected?" rebuilds the button. Collage also needs to
+    // know WHAT is selected (pictures only, at least 2): it alone watches the
+    // chosen ids.
+    final bool enabled;
+    if (actionDependsOnSelection(action)) {
+      ref.watch(mediaSelectionOf(context).select((s) => s.ids));
+      final selected = _selectedItems(context, ref);
+      enabled = isActionEnabled(
+        action,
+        hasImage: selected.any((item) => !item.isVideo),
+        hasVideo: selected.any((item) => item.isVideo),
+        count: selected.length,
+      );
+    } else {
+      enabled = ref.watch(mediaSelectionOf(context).select((s) => s.count > 0));
+    }
     // Disabled: every button the same grey. Enabled: a destructive one
     // (delete for good) in the theme's error colour.
     final scheme = Theme.of(context).colorScheme;

@@ -41,6 +41,7 @@ class MainActivity : FlutterFragmentActivity() {
         mediaEditChannel = MediaEditChannel(this)
         mediaEditChannel.register(flutterEngine.dartExecutor.binaryMessenger)
         MediaCompressChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
+        CollageChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         vaultChannel = VaultChannel(this)
         vaultChannel.register(flutterEngine.dartExecutor.binaryMessenger)
     }

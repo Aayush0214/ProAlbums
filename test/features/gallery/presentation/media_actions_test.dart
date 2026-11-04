@@ -22,7 +22,7 @@ void main() {
         expect(actions.bar, [
           MediaAction.share,
           MediaAction.moveCopy,
-          MediaAction.create,
+          MediaAction.collage,
           MediaAction.delete,
         ]);
         expect(actions.more, [
