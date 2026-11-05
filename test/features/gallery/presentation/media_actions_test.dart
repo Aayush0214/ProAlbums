@@ -206,4 +206,19 @@ void main() {
     expect(viewerBarActionsFor(MediaContext.person), isNull);
     expect(viewerShowsFavorite(MediaContext.person), isTrue);
   });
+
+  test('thing: "Remove this type" last in More and in the viewer', () {
+    expect(
+      selectionActionsFor(MediaContext.thing).more.last,
+      MediaAction.removeThisType,
+    );
+    expect(
+      viewerMoreActionsFor(MediaContext.thing, _item(MediaType.image)).last,
+      MediaAction.removeThisType,
+    );
+    expect(
+      viewerMoreActionsFor(MediaContext.album, _item(MediaType.image)),
+      isNot(contains(MediaAction.removeThisType)),
+    );
+  });
 }

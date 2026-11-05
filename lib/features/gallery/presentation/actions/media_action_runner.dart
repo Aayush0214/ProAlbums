@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/features/classification/presentation/people_flows.dart';
+import 'package:proalbums/features/classification/presentation/thing_flows.dart';
 import 'package:proalbums/features/collage/presentation/collage_flow.dart';
 import 'package:proalbums/features/compress/presentation/compress_flow.dart';
 import 'package:proalbums/features/compress/presentation/convert_h264_flow.dart';
@@ -146,5 +147,9 @@ Future<bool> runMediaAction(
 
     case MediaAction.notThisPerson:
       return removeFromPerson(context, ref, albumId, items);
+
+    // A thing's pictures (albumId = the thing, see thingAlbumId).
+    case MediaAction.removeThisType:
+      return removeFromThing(context, ref, albumId, items);
   }
 }

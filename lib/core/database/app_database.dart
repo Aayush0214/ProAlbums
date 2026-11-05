@@ -4,6 +4,7 @@ import 'package:proalbums/core/database/tables/cleanup_fingerprints.dart';
 import 'package:proalbums/core/database/tables/compressed_media.dart';
 import 'package:proalbums/core/database/tables/faces.dart';
 import 'package:proalbums/core/database/tables/favorites.dart';
+import 'package:proalbums/core/database/tables/photo_labels.dart';
 import 'package:proalbums/core/database/tables/places.dart';
 
 part 'app_database.g.dart';
@@ -27,6 +28,8 @@ part 'app_database.g.dart';
     FaceRejections,
     PhotoLocations,
     PlaceNames,
+    PhotoLabels,
+    ThingExclusions,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -35,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'pro_album'));
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -68,6 +71,17 @@ class AppDatabase extends _$AppDatabase {
           }
           // Version 8: the viewer's place line.
           if (from == 7) await m.addColumn(placeNames, placeNames.label);
+          // Version 9: the things (Documents, Plants, Food…).
+          if (from < 9) await m.createTable(photoLabels);
+          // Version 10: which camera (Selfie) + "Remove this type".
+          if (from == 9) await m.addColumn(photoLabels, photoLabels.camera);
+          if (from < 10) await m.createTable(thingExclusions);
+          // Version 11: Documents by the text read in a picture.
+          if (from == 9 || from == 10) {
+            await m.addColumn(photoLabels, photoLabels.textChars);
+            await m.addColumn(photoLabels, photoLabels.textArea);
+            await m.addColumn(photoLabels, photoLabels.screenshot);
+          }
         },
       );
 }

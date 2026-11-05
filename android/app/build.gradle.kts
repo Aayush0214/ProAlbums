@@ -64,6 +64,11 @@ dependencies {
     // inside the app, no download), SFace (OpenCV Zoo, Apache-2.0, in
     // assets/models) tells who it is, run by ONNX Runtime.
     implementation("com.google.mlkit:face-detection:16.1.7")
+    // ...and the things (Documents, Plants, Food, Cars…): ML Kit's image
+    // labeler (model inside the app).
+    implementation("com.google.mlkit:image-labeling:17.0.9")
+    // Documents: how much text a picture has (Latin, model inside the app).
+    implementation("com.google.mlkit:text-recognition:16.0.1")
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
 
     // Computer-side tests of the vault's encryption (android/app/src/test).

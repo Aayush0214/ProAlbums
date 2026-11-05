@@ -45,6 +45,7 @@ class MainActivity : FlutterFragmentActivity() {
         CollageChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         CleanupChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         FaceChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
+        LabelChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         placeChannel = PlaceChannel(this)
         placeChannel.register(flutterEngine.dartExecutor.binaryMessenger)
         vaultChannel = VaultChannel(this)

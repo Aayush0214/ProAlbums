@@ -7,15 +7,17 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
+import 'package:proalbums/features/classification/domain/thing_rules.dart';
 import 'package:proalbums/features/classification/presentation/classification_providers.dart';
 import 'package:proalbums/features/classification/presentation/people_providers.dart';
 import 'package:proalbums/features/classification/presentation/place_providers.dart';
+import 'package:proalbums/features/classification/presentation/thing_providers.dart';
 import 'package:proalbums/features/classification/presentation/widgets/face_avatar.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/media_thumbnail.dart';
 
 /// Albums tab: "Intelligent classification  More >" and its tiles side by
-/// side (People and Location for now; the things come later). Hidden when
+/// side (People, Location, then the things). Hidden when
 /// Settings > Intelligent classification is off, or when nothing was found.
 class ClassificationSection extends ConsumerWidget {
   const ClassificationSection({super.key});
@@ -36,7 +38,22 @@ class ClassificationSection extends ConsumerWidget {
     final hasPlaces = ref.watch(
       placeAlbumListProvider.select((a) => a.value?.isNotEmpty ?? false),
     );
-    if (ready && !hasPeople && !hasPlaces) return const SizedBox.shrink();
+    final things = ref.watch(
+      thingAlbumListProvider.select(
+        (a) => [
+          for (final kind in ThingKind.values)
+            if (a.value?[kind]?.isNotEmpty ?? false) kind,
+        ],
+      ),
+    );
+    if (ready && !hasPeople && !hasPlaces && things.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final tiles = <Widget>[
+      if (hasPeople || !ready) const PeopleTile(),
+      if (hasPlaces) const LocationTile(),
+      for (final kind in things) ThingTile(kind: kind),
+    ];
 
     // Same tile size as the albums above (3 per row).
     final width = MediaQuery.sizeOf(context).width;
@@ -81,11 +98,10 @@ class ClassificationSection extends ConsumerWidget {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: _side),
               children: [
-                if (hasPeople || !ready)
-                  SizedBox(width: tile, child: const PeopleTile()),
-                if (hasPeople || !ready) const SizedBox(width: _gap),
-                if (hasPlaces)
-                  SizedBox(width: tile, child: const LocationTile()),
+                for (final (i, t) in tiles.indexed) ...[
+                  if (i > 0) const SizedBox(width: _gap),
+                  SizedBox(width: tile, child: t),
+                ],
               ],
             ),
           ),
@@ -221,6 +237,58 @@ class LocationTile extends ConsumerWidget {
           Text('Location', style: context.textTheme.bodyMedium),
           Text(
             NumberFormat.decimalPattern().format(albums.length),
+            style: context.textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One thing (Documents, Food…): its newest picture, the name, the count.
+class ThingTile extends ConsumerWidget {
+  const ThingTile({required this.kind, super.key});
+
+  final ThingKind kind;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pictures = ref.watch(thingAlbumListProvider).value?[kind] ?? const [];
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => unawaited(context.push<void>(AppRoutes.thing(kind.name))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: pictures.isEmpty
+                  ? ColoredBox(color: context.colorScheme.surfaceContainerHigh)
+                  : MediaThumbnail(
+                      item: MediaItem(
+                        id: pictures.first.id,
+                        type: MediaType.image,
+                        createdAt: DateTime.fromMillisecondsSinceEpoch(
+                          pictures.first.takenMs,
+                        ),
+                        width: 0,
+                        height: 0,
+                      ),
+                      size: 320,
+                    ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            kind.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.textTheme.bodyMedium,
+          ),
+          Text(
+            NumberFormat.decimalPattern().format(pictures.length),
             style: context.textTheme.bodySmall,
           ),
         ],

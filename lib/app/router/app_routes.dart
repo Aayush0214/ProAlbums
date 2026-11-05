@@ -75,6 +75,11 @@ abstract final class AppRoutes {
   /// One person's page (People).
   static String person(int personId) => '/person/$personId';
 
+  static const String thingPattern = '/thing/:kind';
+
+  /// One thing's pictures (Documents, Food…); [kind] is a ThingKind name.
+  static String thing(String kind) => '/thing/${Uri.encodeComponent(kind)}';
+
   static const String placePattern = '/place/:name';
 
   /// One place's pictures (Location).

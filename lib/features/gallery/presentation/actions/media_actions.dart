@@ -26,6 +26,10 @@ enum MediaContext {
   /// One person's pictures (Intelligent classification > People): the
   /// library actions plus Set as cover and Not this person.
   person,
+
+  /// One thing's pictures (Intelligent classification > Documents, Food…):
+  /// the album actions plus "Remove this type" last in More.
+  thing,
 }
 
 /// Every action a selection or the viewer can offer, in ONE list. An action
@@ -58,7 +62,10 @@ enum MediaAction {
   setAsCover('Set as cover', icon: LucideIcons.bookmark),
 
   /// Take the picture(s) out of a person (nothing is deleted).
-  notThisPerson('Not this person', icon: LucideIcons.userX);
+  notThisPerson('Not this person', icon: LucideIcons.userX),
+
+  /// Take the picture(s) out of a thing album (nothing is deleted).
+  removeThisType('Remove this type');
 
   const MediaAction(this.label, {this.icon, this.destructive = false});
 
@@ -105,6 +112,21 @@ SelectionActions selectionActionsFor(MediaContext context) => switch (context) {
   MediaContext.preview => const SelectionActions(bar: []),
   MediaContext.vault => const SelectionActions(
     bar: [MediaAction.unhide, MediaAction.deleteHidden],
+  ),
+  MediaContext.thing => const SelectionActions(
+    bar: [
+      MediaAction.share,
+      MediaAction.moveCopy,
+      MediaAction.collage,
+      MediaAction.delete,
+    ],
+    more: [
+      MediaAction.hide,
+      MediaAction.copyToClipboard,
+      MediaAction.convertPdf,
+      MediaAction.print,
+      MediaAction.removeThisType,
+    ],
   ),
   MediaContext.person => const SelectionActions(
     bar: [
@@ -179,8 +201,9 @@ List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
     MediaAction.copyToClipboard,
     MediaAction.convertPdf,
     MediaAction.print,
-    // Opened from a person: last, like the system gallery.
+    // Opened from a person / a thing: last, like the system gallery.
     if (context == MediaContext.person) MediaAction.notThisPerson,
+    if (context == MediaContext.thing) MediaAction.removeThisType,
   ];
 }
 
@@ -196,7 +219,8 @@ List<MediaAction>? viewerBarActionsFor(
   MediaContext.library ||
   MediaContext.album ||
   MediaContext.search ||
-  MediaContext.person => null,
+  MediaContext.person ||
+  MediaContext.thing => null,
 };
 
 /// Heart (favourite) in the viewer: not for pictures in the trash, not in a
