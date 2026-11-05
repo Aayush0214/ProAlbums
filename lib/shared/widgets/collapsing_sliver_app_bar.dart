@@ -5,7 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 
 /// Title sizes: big when the page is at the top, smaller once scrolled.
-const double kTitleExpandedSize = 32;
+/// (28 / 20: long album names such as "Pimpri-Chinchwad" fit.)
+const double kTitleExpandedSize = 28;
 const double kTitleCollapsedSize = 22;
 
 /// How far the title has shrunk, 0 (big) .. 1 (small), for [fromTop] pixels
