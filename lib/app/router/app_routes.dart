@@ -61,6 +61,9 @@ abstract final class AppRoutes {
   static const String people = '/people';
   static const String addPeople = '/people/add';
 
+  /// Intelligent classification > Location (the places).
+  static const String locations = '/locations';
+
   // Pages with a parameter. The *Pattern is for the router, the function
   // builds the real path (ids are encoded, so any id is safe).
   static const String albumPattern = '/album/:albumId';
@@ -71,6 +74,11 @@ abstract final class AppRoutes {
 
   /// One person's page (People).
   static String person(int personId) => '/person/$personId';
+
+  static const String placePattern = '/place/:name';
+
+  /// One place's pictures (Location).
+  static String place(String name) => '/place/${Uri.encodeComponent(name)}';
 
   /// Crop & rotate one page of the PDF being made.
   static String pdfEditPage(String pageId) =>

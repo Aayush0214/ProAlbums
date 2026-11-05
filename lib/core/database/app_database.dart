@@ -4,6 +4,7 @@ import 'package:proalbums/core/database/tables/cleanup_fingerprints.dart';
 import 'package:proalbums/core/database/tables/compressed_media.dart';
 import 'package:proalbums/core/database/tables/faces.dart';
 import 'package:proalbums/core/database/tables/favorites.dart';
+import 'package:proalbums/core/database/tables/places.dart';
 
 part 'app_database.g.dart';
 
@@ -24,6 +25,8 @@ part 'app_database.g.dart';
     Faces,
     People,
     FaceRejections,
+    PhotoLocations,
+    PlaceNames,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -32,7 +35,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'pro_album'));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -58,6 +61,13 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(people);
             await m.createTable(faceRejections);
           }
+          // Version 7: Intelligent classification > Location.
+          if (from < 7) {
+            await m.createTable(photoLocations);
+            await m.createTable(placeNames);
+          }
+          // Version 8: the viewer's place line.
+          if (from == 7) await m.addColumn(placeNames, placeNames.label);
         },
       );
 }

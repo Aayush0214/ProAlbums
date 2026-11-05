@@ -12,8 +12,10 @@ import 'package:proalbums/features/albums/presentation/pages/move_copy_page.dart
 import 'package:proalbums/features/albums/presentation/pages/other_albums_page.dart';
 import 'package:proalbums/features/classification/presentation/pages/add_people_page.dart';
 import 'package:proalbums/features/classification/presentation/pages/classification_page.dart';
+import 'package:proalbums/features/classification/presentation/pages/locations_page.dart';
 import 'package:proalbums/features/classification/presentation/pages/people_page.dart';
 import 'package:proalbums/features/classification/presentation/pages/person_page.dart';
+import 'package:proalbums/features/classification/presentation/pages/place_page.dart';
 import 'package:proalbums/features/cleanup/domain/cleanup_rules.dart';
 import 'package:proalbums/features/cleanup/presentation/cleanup_groups_page.dart';
 import 'package:proalbums/features/cleanup/presentation/cleanup_page.dart';
@@ -307,6 +309,18 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => PersonPage(
           personId: int.tryParse(state.pathParameters['personId'] ?? '') ?? -1,
         ),
+      ),
+      // Intelligent classification > Location.
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.locations,
+        builder: (context, state) => const LocationsPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.placePattern,
+        builder: (context, state) =>
+            PlacePage(name: state.pathParameters['name'] ?? ''),
       ),
       // Slideshow from the viewer (its list, from the picture on screen).
       GoRoute(

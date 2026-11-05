@@ -99,6 +99,9 @@ typedef PeopleBarAction = ({
   IconData icon,
   String label,
   VoidCallback? onPressed,
+
+  /// Cannot be undone (Delete): the theme's error colour when on.
+  bool destructive,
 });
 
 /// The bottom bar of People's select mode (Hide, Merge).
@@ -128,6 +131,8 @@ class PeopleActionBar extends StatelessWidget {
                       builder: (context) {
                         final color = action.onPressed == null
                             ? Theme.of(context).disabledColor
+                            : action.destructive
+                            ? scheme.error
                             : scheme.onSurface;
                         return Column(
                           mainAxisAlignment: MainAxisAlignment.center,

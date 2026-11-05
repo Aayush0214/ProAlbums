@@ -31,7 +31,7 @@ class ClassificationPage extends StatelessWidget {
               mainAxisSpacing: 16,
               mainAxisExtent: tile + 6 + 40,
             ),
-            children: const [PeopleTile()],
+            children: const [PeopleTile(), LocationTile()],
           );
         },
       ),

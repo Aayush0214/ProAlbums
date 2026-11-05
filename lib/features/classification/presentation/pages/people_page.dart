@@ -106,11 +106,13 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                     icon: LucideIcons.eyeOff,
                     label: 'Hide',
                     onPressed: chosen.isEmpty ? null : () => _hide(chosen),
+                    destructive: false,
                   ),
                   (
                     icon: LucideIcons.merge,
                     label: 'Merge',
                     onPressed: chosen.length < 2 ? null : () => _merge(chosen),
+                    destructive: false,
                   ),
                 ],
               ),

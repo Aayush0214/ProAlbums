@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
+import 'package:proalbums/features/classification/presentation/place_providers.dart';
 import 'package:proalbums/features/favorites/presentation/providers/favorites_providers.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
@@ -83,7 +84,21 @@ class ViewerTopBar extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(date, style: text.titleMedium),
-                    Text(time, style: text.bodySmall),
+                    // "1:40 PM Khilachipur-Ujjain Division" when the picture
+                    // has a known place (Intelligent classification).
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final place = ref
+                            .watch(photoPlaceLabelProvider(item.id))
+                            .value;
+                        return Text(
+                          place == null ? time : '$time $place',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text.bodySmall,
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),

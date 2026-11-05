@@ -9,10 +9,13 @@ import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/classification/presentation/classification_providers.dart';
 import 'package:proalbums/features/classification/presentation/people_providers.dart';
+import 'package:proalbums/features/classification/presentation/place_providers.dart';
 import 'package:proalbums/features/classification/presentation/widgets/face_avatar.dart';
+import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
+import 'package:proalbums/features/gallery/presentation/widgets/media_thumbnail.dart';
 
 /// Albums tab: "Intelligent classification  More >" and its tiles side by
-/// side (People for now; Location and the things come later). Hidden when
+/// side (People and Location for now; the things come later). Hidden when
 /// Settings > Intelligent classification is off, or when nothing was found.
 class ClassificationSection extends ConsumerWidget {
   const ClassificationSection({super.key});
@@ -30,7 +33,10 @@ class ClassificationSection extends ConsumerWidget {
     final hasPeople = ref.watch(
       peopleShownProvider.select((people) => people.isNotEmpty),
     );
-    if (ready && !hasPeople) return const SizedBox.shrink();
+    final hasPlaces = ref.watch(
+      placeAlbumListProvider.select((a) => a.value?.isNotEmpty ?? false),
+    );
+    if (ready && !hasPeople && !hasPlaces) return const SizedBox.shrink();
 
     // Same tile size as the albums above (3 per row).
     final width = MediaQuery.sizeOf(context).width;
@@ -74,7 +80,13 @@ class ClassificationSection extends ConsumerWidget {
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: _side),
-              children: [SizedBox(width: tile, child: const PeopleTile())],
+              children: [
+                if (hasPeople || !ready)
+                  SizedBox(width: tile, child: const PeopleTile()),
+                if (hasPeople || !ready) const SizedBox(width: _gap),
+                if (hasPlaces)
+                  SizedBox(width: tile, child: const LocationTile()),
+              ],
             ),
           ),
         ],
@@ -138,6 +150,77 @@ class PeopleTile extends ConsumerWidget {
             !ready && people.isEmpty
                 ? 'Scanning…'
                 : NumberFormat.decimalPattern().format(people.length),
+            style: context.textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Location" with the newest picture of the 4 biggest places in a 2×2,
+/// and how many places there are.
+class LocationTile extends ConsumerWidget {
+  const LocationTile({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final albums = ref.watch(placeAlbumListProvider).value ?? const [];
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => unawaited(context.push<void>(AppRoutes.locations)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(
+            aspectRatio: 1,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const gap = 4.0;
+                final square = (constraints.maxWidth - gap) / 2;
+                Widget slot(int i) => SizedBox.square(
+                  dimension: square,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: i < albums.length
+                        ? MediaThumbnail(
+                            item: MediaItem(
+                              id: albums[i].pictures.first.id,
+                              type: MediaType.image,
+                              createdAt: DateTime.fromMillisecondsSinceEpoch(
+                                albums[i].pictures.first.takenMs,
+                              ),
+                              width: 0,
+                              height: 0,
+                            ),
+                            size: 192,
+                          )
+                        : ColoredBox(
+                            color: context.colorScheme.surfaceContainerHigh,
+                          ),
+                  ),
+                );
+                return Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [slot(0), slot(1)],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [slot(2), slot(3)],
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text('Location', style: context.textTheme.bodyMedium),
+          Text(
+            NumberFormat.decimalPattern().format(albums.length),
             style: context.textTheme.bodySmall,
           ),
         ],

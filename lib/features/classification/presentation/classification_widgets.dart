@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/classification/presentation/classification_providers.dart';
+import 'package:proalbums/features/classification/presentation/place_providers.dart';
 
 /// Starts Intelligent classification's scan a few seconds after the app
 /// opens (so the first screen loads first), in the background, so People
@@ -26,7 +27,9 @@ class _ClassificationAutoStartState
   void initState() {
     super.initState();
     _timer = Timer(const Duration(seconds: 3), () {
-      if (mounted) ref.read(faceScanProvider.notifier).ensureStarted();
+      if (!mounted) return;
+      ref.read(faceScanProvider.notifier).ensureStarted();
+      ref.read(placeScanProvider.notifier).ensureStarted();
     });
   }
 
