@@ -13,7 +13,13 @@ final class SlideshowOptions {
     this.fade = const Duration(milliseconds: 800),
     // Same zoom speed Aayush liked with 2 s (0.25 over 3.6 s), over 4.6 s.
     this.zoomTo = 1.32,
+    this.fit = BoxFit.contain,
   });
+
+  /// How a picture fills the player: whole picture on a dark screen
+  /// (contain, the viewer's slideshow) or filling a banner (cover, a
+  /// person's page).
+  final BoxFit fit;
 
   /// How long a picture stays fully on screen (between its fades).
   final Duration slide;
@@ -237,7 +243,7 @@ class _SlideState extends State<_Slide> with TickerProviderStateMixin {
         scale: _scale,
         child: Image(
           image: widget.image,
-          fit: BoxFit.contain,
+          fit: _o.fit,
           gaplessPlayback: true,
           filterQuality: FilterQuality.medium,
           errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),

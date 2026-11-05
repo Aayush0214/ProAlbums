@@ -172,4 +172,38 @@ void main() {
     expect(viewerShowsInfo(MediaContext.preview), isFalse);
     expect(viewerShowsInfo(MediaContext.library), isTrue);
   });
+
+  test('person: Set as cover (one only) and Not this person', () {
+    expect(selectionActionsFor(MediaContext.person).bar, [
+      MediaAction.share,
+      MediaAction.setAsCover,
+      MediaAction.notThisPerson,
+      MediaAction.delete,
+    ]);
+    expect(
+      isActionEnabled(
+        MediaAction.setAsCover,
+        hasImage: true,
+        hasVideo: false,
+        count: 2,
+      ),
+      isFalse,
+    );
+    expect(
+      isActionEnabled(MediaAction.setAsCover, hasImage: true, hasVideo: false),
+      isTrue,
+    );
+    expect(actionDependsOnSelection(MediaAction.setAsCover), isTrue);
+    // Last in the viewer's More, and only when opened from a person.
+    expect(
+      viewerMoreActionsFor(MediaContext.person, _item(MediaType.image)).last,
+      MediaAction.notThisPerson,
+    );
+    expect(
+      viewerMoreActionsFor(MediaContext.album, _item(MediaType.image)),
+      isNot(contains(MediaAction.notThisPerson)),
+    );
+    expect(viewerBarActionsFor(MediaContext.person), isNull);
+    expect(viewerShowsFavorite(MediaContext.person), isTrue);
+  });
 }

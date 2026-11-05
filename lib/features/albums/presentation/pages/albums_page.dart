@@ -17,6 +17,7 @@ import 'package:proalbums/features/albums/presentation/widgets/album_tile.dart';
 import 'package:proalbums/features/albums/presentation/widgets/new_album_flow.dart';
 import 'package:proalbums/features/albums/presentation/widgets/open_album.dart';
 import 'package:proalbums/features/albums/presentation/widgets/other_albums_tile.dart';
+import 'package:proalbums/features/classification/presentation/widgets/classification_section.dart';
 import 'package:proalbums/features/cleanup/presentation/cleanup_row.dart';
 import 'package:proalbums/features/permissions/presentation/providers/limited_access_banner_provider.dart';
 import 'package:proalbums/features/permissions/presentation/providers/visible_media_providers.dart';
@@ -200,6 +201,7 @@ class AlbumsPage extends ConsumerWidget {
                   ? null
                   : const Column(
                       children: [
+                        ClassificationSection(),
                         CleanupRow(),
                         RecentlyDeletedRow(),
                         SizedBox(height: 12),

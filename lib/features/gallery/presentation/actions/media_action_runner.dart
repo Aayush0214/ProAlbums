@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:proalbums/app/router/app_routes.dart';
+import 'package:proalbums/features/classification/presentation/people_flows.dart';
 import 'package:proalbums/features/collage/presentation/collage_flow.dart';
 import 'package:proalbums/features/compress/presentation/compress_flow.dart';
 import 'package:proalbums/features/compress/presentation/convert_h264_flow.dart';
@@ -138,5 +139,12 @@ Future<bool> runMediaAction(
     case MediaAction.collage:
       // The collage feature; when it saved one, the viewer shows it.
       return makeCollage(context, ref, items);
+
+    // A person's pictures (albumId = the person, see personAlbumId).
+    case MediaAction.setAsCover:
+      return setPersonCover(context, ref, albumId, items.first);
+
+    case MediaAction.notThisPerson:
+      return removeFromPerson(context, ref, albumId, items);
   }
 }

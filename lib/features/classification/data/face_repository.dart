@@ -448,6 +448,12 @@ final class FaceStore {
     }
   }
 
+  /// Every person's average face (for "Similar people have been detected").
+  Future<List<GroupPerson>> means() async => [
+    for (final p in await _db.select(_db.people).get())
+      (id: p.id, mean: embeddingFromBytes(p.centroid), count: p.faceCount),
+  ];
+
   /// The grouping rules changed: every face is grouped again from scratch
   /// (faces stay, people and "Not this person" go).
   Future<void> resetGrouping() async {

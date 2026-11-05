@@ -55,12 +55,22 @@ abstract final class AppRoutes {
   static const String cleanupGroups = '/cleanup/sets';
   static const String cleanupPreview = '/cleanup/preview';
 
+  /// Albums > Intelligent classification ("More"), People, and People's
+  /// "+" (the other people found).
+  static const String classification = '/classification';
+  static const String people = '/people';
+  static const String addPeople = '/people/add';
+
   // Pages with a parameter. The *Pattern is for the router, the function
   // builds the real path (ids are encoded, so any id is safe).
   static const String albumPattern = '/album/:albumId';
   static const String changeCoverPattern = '/change-cover/:albumId';
   static const String viewerPattern = '/viewer/:mediaId';
   static const String pdfEditPagePattern = '/convert-pdf/edit/:pageId';
+  static const String personPattern = '/person/:personId';
+
+  /// One person's page (People).
+  static String person(int personId) => '/person/$personId';
 
   /// Crop & rotate one page of the PDF being made.
   static String pdfEditPage(String pageId) =>

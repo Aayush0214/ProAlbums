@@ -22,6 +22,10 @@ enum MediaContext {
 
   /// The private vault ("Hidden photos"): only Unhide and Delete.
   vault,
+
+  /// One person's pictures (Intelligent classification > People): the
+  /// library actions plus Set as cover and Not this person.
+  person,
 }
 
 /// Every action a selection or the viewer can offer, in ONE list. An action
@@ -48,7 +52,13 @@ enum MediaAction {
   unhide('Unhide', icon: LucideIcons.eye),
 
   /// Delete from the private vault (to Recently deleted, or for good).
-  deleteHidden('Delete', icon: LucideIcons.trash2, destructive: true);
+  deleteHidden('Delete', icon: LucideIcons.trash2, destructive: true),
+
+  /// A person's cover picture (one picture).
+  setAsCover('Set as cover', icon: LucideIcons.bookmark),
+
+  /// Take the picture(s) out of a person (nothing is deleted).
+  notThisPerson('Not this person', icon: LucideIcons.userX);
 
   const MediaAction(this.label, {this.icon, this.destructive = false});
 
@@ -96,6 +106,21 @@ SelectionActions selectionActionsFor(MediaContext context) => switch (context) {
   MediaContext.vault => const SelectionActions(
     bar: [MediaAction.unhide, MediaAction.deleteHidden],
   ),
+  MediaContext.person => const SelectionActions(
+    bar: [
+      MediaAction.share,
+      MediaAction.setAsCover,
+      MediaAction.notThisPerson,
+      MediaAction.delete,
+    ],
+    more: [
+      MediaAction.moveCopy,
+      MediaAction.hide,
+      MediaAction.copyToClipboard,
+      MediaAction.convertPdf,
+      MediaAction.print,
+    ],
+  ),
 };
 
 /// Is [action] ON for a selection with pictures and/or videos? Options that
@@ -116,12 +141,13 @@ bool isActionEnabled(
   MediaAction.convertPdf ||
   MediaAction.print => hasImage && !hasVideo,
   MediaAction.collage => hasImage && !hasVideo && count >= 2,
+  MediaAction.setAsCover => count == 1,
   _ => true,
 };
 
 /// Bar buttons whose "on" depends on WHAT is selected (not only "anything").
 bool actionDependsOnSelection(MediaAction action) =>
-    action == MediaAction.collage;
+    action == MediaAction.collage || action == MediaAction.setAsCover;
 
 /// The viewer's "More" menu: depends on the screen AND on the item (a video
 /// has its own list).
@@ -141,7 +167,7 @@ List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
       MediaAction.convertToH264,
     ];
   }
-  return const [
+  return [
     MediaAction.googleLens,
     MediaAction.moveCopy,
     MediaAction.hide,
@@ -153,6 +179,8 @@ List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
     MediaAction.copyToClipboard,
     MediaAction.convertPdf,
     MediaAction.print,
+    // Opened from a person: last, like the system gallery.
+    if (context == MediaContext.person) MediaAction.notThisPerson,
   ];
 }
 
@@ -165,7 +193,10 @@ List<MediaAction>? viewerBarActionsFor(
   MediaContext.trash => const [MediaAction.restore, MediaAction.deleteForever],
   MediaContext.preview => const [],
   MediaContext.vault => const [MediaAction.unhide, MediaAction.deleteHidden],
-  MediaContext.library || MediaContext.album || MediaContext.search => null,
+  MediaContext.library ||
+  MediaContext.album ||
+  MediaContext.search ||
+  MediaContext.person => null,
 };
 
 /// Heart (favourite) in the viewer: not for pictures in the trash, not in a

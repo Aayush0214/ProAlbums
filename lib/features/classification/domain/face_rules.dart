@@ -24,6 +24,13 @@ abstract final class FaceRules {
   /// ...and only the people with the most pictures, at most this many.
   static const int maxAutoShown = 20;
 
+  /// Featured pictures on a person's page (and its slideshow).
+  static const int maxFeatured = 20;
+
+  /// The "+" page lists people in at least this many pictures (a face seen
+  /// once is mostly a stranger in the background).
+  static const int minPicturesToAdd = 2;
+
   /// Embedding length of SFace.
   static const int embeddingLength = 128;
 }
@@ -208,3 +215,51 @@ List<int> similarPeople(GroupPerson person, List<GroupPerson> others) {
   scored.sort((a, b) => b.score.compareTo(a.score));
   return [for (final s in scored) s.id];
 }
+
+/// What [featuredPictures] needs to know about a face.
+typedef FeaturedCandidate = ({String mediaId, double quality, int takenMs});
+
+/// The person page's featured pictures (and its slideshow): at most [max],
+/// the best face of each DAY first (so the same moment does not fill the
+/// list), then the next best ones; newest first.
+List<String> featuredPictures(
+  List<FeaturedCandidate> faces, {
+  int max = FaceRules.maxFeatured,
+}) {
+  final best = <String, FeaturedCandidate>{};
+  for (final face in faces) {
+    final known = best[face.mediaId];
+    if (known == null || face.quality > known.quality) {
+      best[face.mediaId] = face;
+    }
+  }
+  final byQuality = best.values.toList()
+    ..sort((a, b) => b.quality.compareTo(a.quality));
+  String dayOf(int ms) {
+    final d = DateTime.fromMillisecondsSinceEpoch(ms);
+    return '${d.year}-${d.month}-${d.day}';
+  }
+
+  final chosen = <FeaturedCandidate>[];
+  final days = <String>{};
+  for (final face in byQuality) {
+    if (chosen.length >= max) break;
+    if (days.add(dayOf(face.takenMs))) chosen.add(face);
+  }
+  for (final face in byQuality) {
+    if (chosen.length >= max) break;
+    if (!chosen.contains(face)) chosen.add(face);
+  }
+  chosen.sort((a, b) => b.takenMs.compareTo(a.takenMs));
+  return [for (final face in chosen) face.mediaId];
+}
+
+/// A person's pictures are shown like an album: its id on the shared grid,
+/// the viewer and the actions.
+String personAlbumId(int personId) => 'person:$personId';
+
+/// The person of a [personAlbumId] (null = not a person).
+int? personIdOfAlbum(String? albumId) =>
+    albumId != null && albumId.startsWith('person:')
+    ? int.tryParse(albumId.substring('person:'.length))
+    : null;

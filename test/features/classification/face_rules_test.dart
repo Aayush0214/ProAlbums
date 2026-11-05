@@ -121,4 +121,41 @@ void main() {
       greaterThan(faceQuality(size: 0.3, sharpness: 20)),
     );
   });
+
+  group('featured pictures', () {
+    const day = 24 * 60 * 60 * 1000;
+    FeaturedCandidate f(String id, double quality, int dayIndex) =>
+        (mediaId: id, quality: quality, takenMs: dayIndex * day + 1000);
+
+    test('the best of each day first, then the rest; newest first', () {
+      final chosen = featuredPictures([
+        f('a', 0.9, 1),
+        f('b', 0.8, 1), // same day as a, second best
+        f('c', 0.2, 2),
+        f('d', 0.1, 3),
+      ], max: 3);
+      // One per day wins over the second best of day 1.
+      expect(chosen, ['d', 'c', 'a']);
+    });
+
+    test('fewer days than places: filled with the next best', () {
+      final chosen = featuredPictures([
+        f('a', 0.9, 1),
+        f('b', 0.8, 1),
+        f('c', 0.1, 1),
+      ], max: 2);
+      expect(chosen.toSet(), {'a', 'b'});
+    });
+
+    test('a picture with two faces of the person counts once', () {
+      final chosen = featuredPictures([f('a', 0.9, 1), f('a', 0.4, 1)]);
+      expect(chosen, ['a']);
+    });
+  });
+
+  test('a person is shown like an album', () {
+    expect(personIdOfAlbum(personAlbumId(42)), 42);
+    expect(personIdOfAlbum('-1617409521'), isNull);
+    expect(personIdOfAlbum(null), isNull);
+  });
 }
