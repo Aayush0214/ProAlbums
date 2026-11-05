@@ -35,17 +35,25 @@ void main() {
       id: (id: id, modified: 1, takenMs: 1000 - i),
   };
 
-  /// Pictures a1..a3 show person A (axis 0), b1 person B (axis 1).
+  /// Pictures a1..a4 show person A (axis 0, 4 pictures); a3, b1, b2 show
+  /// person B (axis 1, 3 pictures). A stranger (axis 2) is seen once.
   Future<void> seed() async {
     await store.saveAnalyzed([
       (id: 'a1', faces: [found(0)]),
       (id: 'a2', faces: [found(0, size: 0.6)]),
       (id: 'a3', faces: [found(0), found(1)]),
+      (id: 'a4', faces: [found(0)]),
       (id: 'b1', faces: [found(1)]),
+      (id: 'b2', faces: [found(1), found(2)]),
       (id: 'none', faces: const []),
-    ], listed(['a1', 'a2', 'a3', 'b1', 'none']));
+    ], listed(['a1', 'a2', 'a3', 'a4', 'b1', 'b2', 'none']));
     expect(await store.groupNewFaces(), isTrue);
   }
+
+  test('a face seen once waits in nobody', () async {
+    await seed();
+    expect(await store.ungroupedCount(), 1);
+  });
 
   test('pictures are remembered with their modified time', () async {
     await seed();
@@ -56,10 +64,10 @@ void main() {
     await seed();
     final people = await store.people();
     expect(people, hasLength(2));
-    final a = people.firstWhere((p) => p.pictures == 3);
+    final a = people.firstWhere((p) => p.pictures == 4);
     // The biggest face is the cover.
     expect(a.cover.mediaId, 'a2');
-    expect(people.map((p) => p.pictures), containsAll([3, 2]));
+    expect(people.map((p) => p.pictures), containsAll([4, 3]));
     // Nothing new: grouping again changes nothing.
     expect(await store.groupNewFaces(), isFalse);
   });
@@ -67,8 +75,8 @@ void main() {
   test('name, cover and merge', () async {
     await seed();
     final people = await store.people();
-    final a = people.firstWhere((p) => p.pictures == 3);
-    final b = people.firstWhere((p) => p.pictures == 2);
+    final a = people.firstWhere((p) => p.pictures == 4);
+    final b = people.firstWhere((p) => p.pictures == 3);
 
     await store.rename(b.id, '  Ravi ');
     final faceA1 = (await store.facesOf(a.id))
@@ -84,25 +92,25 @@ void main() {
     expect(after, hasLength(1));
     expect(after.single.id, a.id);
     expect(after.single.name, 'Ravi'); // the name is kept
-    expect(after.single.pictures, 4);
+    expect(after.single.pictures, 6);
     expect(after.single.shown, isTrue);
   });
 
   test('"Not this person" takes the picture out for good', () async {
     await seed();
-    final a = (await store.people()).firstWhere((p) => p.pictures == 3);
+    final a = (await store.people()).firstWhere((p) => p.pictures == 4);
     await store.removeFromPerson(a.id, ['a1']);
-    expect((await store.people()).firstWhere((p) => p.id == a.id).pictures, 2);
+    expect((await store.people()).firstWhere((p) => p.id == a.id).pictures, 3);
     // Not given to anyone again.
     expect(await store.groupNewFaces(), isFalse);
   });
 
   test('deleted pictures leave; empty people are gone', () async {
     await seed();
-    await store.forget(['b1', 'a3']);
+    await store.forget(['b1', 'b2', 'a3']);
     final people = await store.people();
     expect(people, hasLength(1));
-    expect(people.single.pictures, 2);
+    expect(people.single.pictures, 3);
     expect((await store.scanned()).containsKey('b1'), isFalse);
     expect((await store.counts()).people, 1);
   });

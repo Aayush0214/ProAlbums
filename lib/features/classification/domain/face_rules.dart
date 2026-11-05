@@ -3,19 +3,46 @@ import 'dart:typed_data';
 
 /// Numbers for People (tuned on the phone; change here only).
 abstract final class FaceRules {
-  /// A face joins a person when its average cosine to the person's faces
-  /// is at least this (SFace's own same-person line for one pair is
+  /// A face joins a known person when its average cosine to the person's
+  /// faces is at least this (SFace's own same-person line for one pair is
   /// 0.363). Higher = fewer mix-ups, more split people (Merge fixes those).
-  static const double samePerson = 0.36;
+  static const double samePerson = 0.40;
+
+  /// A weak face (small: [strongSize]) joins only when this sure.
+  static const double weakSamePerson = 0.48;
+
+  /// New people come from groups of faces: two groups join while the
+  /// AVERAGE cosine of all their face pairs is at least this (one
+  /// look-alike face cannot join two people, see [averageGroups]).
+  static const double joinGroups = 0.38;
+
+  /// After grouping, a face whose score to its own person ([personScore])
+  /// is below this goes back to nobody (it was most likely someone else).
+  static const double minScoreInPerson = 0.32;
+
+  /// A group needs at least this many faces to become a person, so one
+  /// look-alike pair cannot.
+  static const int minFacesForPerson = 3;
+
+  /// [averageGroups] compares every pair, so it takes at most this many
+  /// faces at once (the rest wait for the next grouping): ~36 MB.
+  static const int maxFacesPerGrouping = 3000;
+
+  /// Faces at least this wide (share of the picture's short side, ≈ 60 px
+  /// in the scanned picture) are strong enough to start a new person.
+  static const double strongSize = 0.08;
 
   /// Change when the grouping rules change: every face is grouped again
-  /// (the faces themselves are kept; user changes are lost — fine before
-  /// the People pages exist).
-  static const int groupingVersion = 2;
+  /// (the faces themselves are kept; user changes are lost).
+  static const int groupingVersion = 8;
+
+  /// Change when FaceChannel finds or reads faces differently: every
+  /// picture is looked at again (all faces and people are lost).
+  static const int scanVersion = 2;
 
   /// Two people at least this close (but not [samePerson]) are offered as
   /// "Similar people have been detected. Merge now".
-  static const double similarPeople = 0.35;
+  static const double similarPeople = 0.30;
 
   /// The app puts a person on the People page when they are in at least
   /// this many pictures...
@@ -88,8 +115,14 @@ Float32List meanOf(List<Float32List> vectors) {
 /// A person as the grouping sees it.
 typedef GroupPerson = ({int id, Float32List mean, int count});
 
-/// A face not given to anyone yet (newest pictures first).
-typedef NewFace = ({int id, Float32List embedding});
+/// A face not given to anyone yet (newest pictures first). [strong]: big
+/// enough to start a new person (see [FaceRules.strongSize]).
+typedef NewFace = ({
+  int id,
+  Float32List embedding,
+  bool strong,
+  String mediaId,
+});
 
 /// What [groupFaces] decided. New people have ids below 0 (-1, -2, …)
 /// until the database gives them real ones.
@@ -105,9 +138,111 @@ typedef GroupResult = ({
 /// pull in strangers.)
 double personScore(Float32List face, Float32List mean) => _dot(face, mean);
 
-/// Gives each new face to the closest person when close enough
-/// ([FaceRules.samePerson], see [personScore]); otherwise it starts a new
-/// person. Pure (runs in an isolate).
+Float32List _unit(Float32List v) {
+  final length = math.sqrt(_dot(v, v));
+  return length == 0
+      ? v
+      : Float32List.fromList([for (final x in v) x / length]);
+}
+
+/// Groups of faces that belong together (average-linkage clustering):
+/// every face starts alone; the two closest groups join, again and again,
+/// while the AVERAGE cosine over all their face pairs is at least [join].
+/// Unlike "near to any member", one look-alike face cannot glue two people
+/// together. Groups smaller than [minFaces] are left out. [faces] must have
+/// length 1. Returns groups of indexes, biggest first.
+///
+/// Nearest-neighbour chain: O(n²) time and memory (n × n similarities).
+List<List<int>> averageGroups(
+  List<Float32List> faces, {
+  double join = FaceRules.joinGroups,
+  int minFaces = FaceRules.minFacesForPerson,
+  List<String>? pictures,
+}) {
+  final n = faces.length;
+  if (n == 0) return const [];
+  final sim = Float32List(n * n);
+  for (var i = 0; i < n; i++) {
+    for (var j = i + 1; j < n; j++) {
+      // Two faces of the SAME picture are two different people.
+      final s = pictures != null && pictures[i] == pictures[j]
+          ? -1.0
+          : _dot(faces[i], faces[j]);
+      sim[i * n + j] = s;
+      sim[j * n + i] = s;
+    }
+  }
+  final size = List<int>.filled(n, 1);
+  final alive = List<bool>.filled(n, true);
+  // Done: its closest group is below [join], it will never join again.
+  final done = List<bool>.filled(n, false);
+  final members = [
+    for (var i = 0; i < n; i++) [i],
+  ];
+  final chain = <int>[];
+  var next = 0;
+
+  while (true) {
+    if (chain.isEmpty) {
+      while (next < n && (!alive[next] || done[next])) {
+        next++;
+      }
+      if (next >= n) break;
+      chain.add(next);
+    }
+    final a = chain.last;
+    final previous = chain.length >= 2 ? chain[chain.length - 2] : -1;
+    var best = -1;
+    var bestSim = double.negativeInfinity;
+    for (var k = 0; k < n; k++) {
+      if (k == a || !alive[k] || done[k]) continue;
+      final s = sim[a * n + k];
+      if (s > bestSim || (s == bestSim && k == previous)) {
+        bestSim = s;
+        best = k;
+      }
+    }
+    if (best < 0 || bestSim < join) {
+      done[a] = true;
+      chain.removeLast();
+      continue;
+    }
+    if (best != previous) {
+      chain.add(best);
+      continue;
+    }
+    // a and b are each other's closest: join b into a.
+    chain
+      ..removeLast()
+      ..removeLast();
+    final b = best;
+    final total = size[a] + size[b];
+    for (var k = 0; k < n; k++) {
+      if (!alive[k] || k == a || k == b) continue;
+      final s = (size[a] * sim[a * n + k] + size[b] * sim[b * n + k]) / total;
+      sim[a * n + k] = s;
+      sim[k * n + a] = s;
+    }
+    size[a] = total;
+    alive[b] = false;
+    members[a].addAll(members[b]);
+  }
+
+  return [
+    for (var i = 0; i < n; i++)
+      if (alive[i] && size[i] >= minFaces) members[i],
+  ]..sort((x, y) => y.length.compareTo(x.length));
+}
+
+/// Gives the new faces to people. Pure (runs in an isolate).
+///  1. A face goes to the known person it is closest to, when the score
+///     ([personScore]) reaches [FaceRules.samePerson]
+///     ([FaceRules.weakSamePerson] for a small face).
+///  2. The strong faces left over that form groups ([averageGroups]) become
+///     new people.
+///  3. Again from 1 (a few rounds), so faces can join the people just made.
+///  4. The rest stay new (not in [GroupResult.personOfFace]): they are tried
+///     again next time, when more faces have come in.
 GroupResult groupFaces(List<GroupPerson> people, List<NewFace> faces) {
   // Work with sums: face · sum / count = face · mean (one dot product).
   final ids = <int>[];
@@ -126,33 +261,83 @@ GroupResult groupFaces(List<GroupPerson> people, List<NewFace> faces) {
   final touched = <int>{};
   final personOfFace = <int, int>{};
 
-  for (final face in faces) {
-    final eNorm = math.sqrt(_dot(face.embedding, face.embedding));
-    if (eNorm == 0) continue;
-    final e = Float32List.fromList([for (final v in face.embedding) v / eNorm]);
-    var best = -1;
-    var bestScore = FaceRules.samePerson;
-    for (var p = 0; p < sums.length; p++) {
-      final score = _dot(e, sums[p]) / counts[p];
-      if (score >= bestScore) {
-        bestScore = score;
-        best = p;
+  void add(int p, Float32List e) {
+    final sum = sums[p];
+    for (var i = 0; i < sum.length && i < e.length; i++) {
+      sum[i] += e[i];
+    }
+    counts[p]++;
+  }
+
+  var waiting = [
+    for (final face in faces)
+      if (_dot(_unit(face.embedding), _unit(face.embedding)) > 0)
+        (
+          id: face.id,
+          e: _unit(face.embedding),
+          strong: face.strong,
+          picture: face.mediaId,
+        ),
+  ];
+
+  // A person is in a picture once: the pictures each person got here.
+  final picturesOf = <int, Set<String>>{};
+
+  // Rounds: the people made in a round can take in faces in the next one.
+  for (var round = 0; round < 4 && waiting.isNotEmpty; round++) {
+    final given = personOfFace.length;
+
+    // 1. Known (and just made) people.
+    final left = <({int id, Float32List e, bool strong, String picture})>[];
+    for (final face in waiting) {
+      var best = -1;
+      var bestScore = face.strong
+          ? FaceRules.samePerson
+          : FaceRules.weakSamePerson;
+      for (var p = 0; p < sums.length; p++) {
+        if (picturesOf[p]?.contains(face.picture) ?? false) continue;
+        final score = _dot(face.e, sums[p]) / counts[p];
+        if (score >= bestScore) {
+          bestScore = score;
+          best = p;
+        }
+      }
+      if (best >= 0) {
+        add(best, face.e);
+        touched.add(best);
+        personOfFace[face.id] = ids[best];
+        (picturesOf[best] ??= {}).add(face.picture);
+      } else {
+        left.add(face);
       }
     }
-    if (best < 0) {
-      ids.add(-(sums.length - known + 1));
-      sums.add(e);
-      counts.add(1);
-      best = sums.length - 1;
-    } else {
-      final sum = sums[best];
-      for (var i = 0; i < sum.length && i < e.length; i++) {
-        sum[i] += e[i];
+
+    // 2. New people from groups of the strong faces left.
+    final strong = [
+      for (final f in left)
+        if (f.strong) f,
+    ].take(FaceRules.maxFacesPerGrouping).toList();
+    final grouped = <int>{};
+    for (final members in averageGroups(
+      [for (final f in strong) f.e],
+      pictures: [for (final f in strong) f.picture],
+    )) {
+      final p = sums.length;
+      ids.add(-(p - known + 1));
+      sums.add(Float32List(strong[members.first].e.length));
+      counts.add(0);
+      for (final m in members) {
+        add(p, strong[m].e);
+        personOfFace[strong[m].id] = ids[p];
+        (picturesOf[p] ??= {}).add(strong[m].picture);
+        grouped.add(strong[m].id);
       }
-      counts[best]++;
     }
-    touched.add(best);
-    personOfFace[face.id] = ids[best];
+    waiting = [
+      for (final f in left)
+        if (!grouped.contains(f.id)) f,
+    ];
+    if (personOfFace.length == given) break;
   }
 
   GroupPerson asPerson(int p) {
@@ -205,12 +390,14 @@ List<int> peopleOnPage(List<PersonStanding> people) {
 }
 
 /// People close to [person] but not merged ("Similar people have been
-/// detected"), closest first.
+/// detected"), closest first. Close = the AVERAGE cosine between their
+/// faces (mean · mean): one person split in two scores high, two people
+/// low. (The cosine of the two means was high for any two big groups.)
 List<int> similarPeople(GroupPerson person, List<GroupPerson> others) {
   final scored = [
     for (final other in others)
       if (other.id != person.id)
-        (id: other.id, score: faceCosine(person.mean, other.mean)),
+        (id: other.id, score: _dot(person.mean, other.mean)),
   ]..retainWhere((s) => s.score >= FaceRules.similarPeople);
   scored.sort((a, b) => b.score.compareTo(a.score));
   return [for (final s in scored) s.id];

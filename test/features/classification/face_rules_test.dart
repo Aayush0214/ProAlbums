@@ -25,16 +25,61 @@ void main() {
   });
 
   group('grouping', () {
-    test('close faces become one person, different faces two', () {
+    NewFace n(int id, Float32List e, {bool strong = true, String? picture}) =>
+        (id: id, embedding: e, strong: strong, mediaId: picture ?? 'p$id');
+
+    test('two faces of one picture are never one person', () {
+      // Twins in one picture + one more picture of each.
       final result = groupFaces(const [], [
-        (id: 1, embedding: face(0)),
-        (id: 2, embedding: face(0, noise: 0.2)),
-        (id: 3, embedding: face(1)),
+        n(1, face(0), picture: 'group'),
+        n(2, face(0, noise: 0.05), picture: 'group'),
+        n(3, face(0, noise: 0.1)),
+        n(4, face(0, noise: 0.15)),
       ]);
-      expect(result.created, hasLength(2));
+      expect(result.personOfFace[1], isNot(result.personOfFace[2]));
+    });
+
+    test('3 close faces make a person; a lone face waits', () {
+      final result = groupFaces(const [], [
+        n(1, face(0)),
+        n(2, face(0, noise: 0.2)),
+        n(3, face(0, noise: 0.3, noiseAxis: 101)),
+        n(4, face(1)),
+      ]);
+      expect(result.created, hasLength(1));
+      expect(result.created.single.count, 3);
+      expect(result.created.single.id, lessThan(0));
       expect(result.personOfFace[1], result.personOfFace[2]);
-      expect(result.personOfFace[3], isNot(result.personOfFace[1]));
-      expect(result.created.every((p) => p.id < 0), isTrue);
+      expect(result.personOfFace[1], result.personOfFace[3]);
+      expect(result.personOfFace.containsKey(4), isFalse);
+    });
+
+    test('a face too far for the group joins the new person next round', () {
+      final result = groupFaces(const [], [
+        n(1, face(0)),
+        n(2, face(0, noise: 0.1)),
+        n(3, face(0, noise: 0.1, noiseAxis: 101)),
+        // cos ≈ 0.45 to each: not "near" (0.50), but score ≥ 0.40.
+        n(4, face(0, noise: 2.0)),
+      ]);
+      expect(result.created.single.count, 4);
+      expect(result.personOfFace[4], result.personOfFace[1]);
+    });
+
+    test('a look-alike PAIR does not make a person', () {
+      final result = groupFaces(const [], [
+        n(1, face(0)),
+        n(2, face(0, noise: 0.2)),
+      ]);
+      expect(result.created, isEmpty);
+      expect(result.personOfFace, isEmpty);
+    });
+
+    test('small faces never start a person', () {
+      final result = groupFaces(const [], [
+        for (var i = 0; i < 4; i++) n(i, face(0), strong: false),
+      ]);
+      expect(result.created, isEmpty);
     });
 
     test('a face joins the closest known person and moves its average', () {
@@ -42,9 +87,7 @@ void main() {
         (id: 7, mean: face(0), count: 3),
         (id: 8, mean: face(1), count: 5),
       ];
-      final result = groupFaces(known, [
-        (id: 1, embedding: face(1, noise: 0.3)),
-      ]);
+      final result = groupFaces(known, [n(1, face(1, noise: 0.3))]);
       expect(result.personOfFace[1], 8);
       expect(result.created, isEmpty);
       final changed = result.changed.single;
@@ -54,13 +97,41 @@ void main() {
       expect(changed.mean[100], closeTo(0.0479, 1e-3));
     });
 
-    test('too far from everyone starts a new person', () {
-      final result = groupFaces(
-        [(id: 7, mean: face(0), count: 3)],
-        [(id: 1, embedding: face(2))],
-      );
-      expect(result.created.single.count, 1);
-      expect(result.changed, isEmpty);
+    test('a small face must be surer to join', () {
+      // Score 0.42: enough for a big face, not for a small one.
+      final known = [(id: 7, mean: face(0), count: 3)];
+      final e = face(0, noise: 2.16); // cos ≈ 0.42
+      expect(groupFaces(known, [n(1, e)]).personOfFace[1], 7);
+      expect(groupFaces(known, [n(1, e, strong: false)]).personOfFace, isEmpty);
+    });
+
+    test('one look-alike face does not glue two people together', () {
+      final bridge = Float32List(FaceRules.embeddingLength)
+        ..[0] = 0.7071
+        ..[1] = 0.7071; // cos 0.71 to both people
+      final groups = averageGroups([
+        face(0),
+        face(0, noise: 0.1),
+        face(0, noise: 0.2),
+        bridge,
+        face(1),
+        face(1, noise: 0.1),
+        face(1, noise: 0.2),
+      ]);
+      expect(groups, hasLength(2));
+      expect(groups.map((g) => g.length).toList(), [4, 3]);
+    });
+
+    test('two different people stay two groups', () {
+      final unit = [
+        face(0),
+        face(0, noise: 0.1),
+        face(0, noise: 0.2),
+        face(1),
+        face(1, noise: 0.1),
+        face(1, noise: 0.2),
+      ];
+      expect(averageGroups(unit), hasLength(2));
     });
   });
 
@@ -101,12 +172,17 @@ void main() {
     });
   });
 
-  test('similar people: close but not merged, closest first', () {
-    final me = (id: 1, mean: face(0), count: 4);
+  test('similar people: faces close on average, closest first', () {
+    // A mean of length 0.7 = faces about 0.49 alike inside the group.
+    Float32List mean(double along0, {double along2 = 0}) =>
+        Float32List(FaceRules.embeddingLength)
+          ..[0] = 0.7 * along0
+          ..[2] = 0.7 * along2;
+    final me = (id: 1, mean: mean(1), count: 4);
     final others = [
-      (id: 2, mean: face(0, noise: 1.5), count: 4), // cos ≈ 0.55
-      (id: 3, mean: face(0, noise: 0.5), count: 4), // cos ≈ 0.89
-      (id: 4, mean: face(5), count: 4), // unrelated
+      (id: 2, mean: mean(0.8, along2: 0.6), count: 4), // 0.39
+      (id: 3, mean: mean(1), count: 4), // 0.49: the same person split
+      (id: 4, mean: mean(0.5, along2: 0.87), count: 4), // 0.25: someone else
     ];
     expect(similarPeople(me, others), [3, 2]);
   });

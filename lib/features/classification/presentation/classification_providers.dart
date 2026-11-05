@@ -149,12 +149,21 @@ class FaceScan extends _$FaceScan {
   }
 
   static const String _groupingVersionKey = 'face_grouping_version';
+  static const String _scanVersionKey = 'face_scan_version';
 
-  /// New grouping rules ([FaceRules.groupingVersion]): group every face
-  /// again (no picture is looked at again).
+  /// New way of reading faces ([FaceRules.scanVersion]): every picture is
+  /// looked at again. New grouping rules ([FaceRules.groupingVersion]):
+  /// every face is grouped again (no picture is looked at again).
   Future<void> _regroupIfRulesChanged(FaceStore store) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (prefs.getInt(_scanVersionKey) != FaceRules.scanVersion) {
+        await store.resetAll();
+        await prefs.setInt(_scanVersionKey, FaceRules.scanVersion);
+        await prefs.setInt(_groupingVersionKey, FaceRules.groupingVersion);
+        AppLogger.d('Face scan: faces are read differently, scanning again');
+        return;
+      }
       if (prefs.getInt(_groupingVersionKey) == FaceRules.groupingVersion) {
         return;
       }
@@ -248,7 +257,8 @@ class FaceScan extends _$FaceScan {
     AppLogger.d(
       'Face scan: ${todo.length} new pictures in '
       '${watch.elapsed.inSeconds}s; total ${counts.pictures} pictures, '
-      '${counts.faces} faces, ${counts.people} people, '
+      '${counts.faces} faces (${await store.ungroupedCount()} in nobody), '
+      '${counts.people} people, '
       '${onPage.length} on the People page; top people: ${top.join('; ')}; '
       'next: ${biggest.skip(8).take(17).map((p) => p.pictures).join(', ')}',
     );

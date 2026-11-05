@@ -44,4 +44,18 @@ class FaceAlignTest {
         assertEquals(0.6f, v[0], 1e-6f)
         assertEquals(0.8f, v[1], 1e-6f)
     }
+
+    @Test
+    fun fourPointsAlsoBringAFaceBack() {
+        // The eyes / mouth template moved and doubled.
+        val face = FloatArray(8) { i ->
+            FaceAlign.EYES_AND_MOUTH[i] * 2 + if (i % 2 == 0) 50f else 10f
+        }
+        val t = FaceAlign.similarity(face, FaceAlign.EYES_AND_MOUTH)
+        for (i in 0 until 4) {
+            val (x, y) = apply(t, face[2 * i], face[2 * i + 1])
+            assertEquals(FaceAlign.EYES_AND_MOUTH[2 * i], x, 1e-2f)
+            assertEquals(FaceAlign.EYES_AND_MOUTH[2 * i + 1], y, 1e-2f)
+        }
+    }
 }

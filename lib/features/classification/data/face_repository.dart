@@ -193,8 +193,9 @@ final class FaceStore {
     });
   }
 
-  /// Gives every new face to a person (in an isolate). True when anything
-  /// changed.
+  /// Gives the new faces to people (in an isolate, see [groupFaces]); faces
+  /// that fit nobody yet stay new and are tried again next time. True when
+  /// anything changed.
   Future<bool> groupNewFaces() async {
     final newRows =
         await (_db.select(_db.faces).join([
@@ -212,6 +213,8 @@ final class FaceStore {
         (
           id: row.readTable(_db.faces).id,
           embedding: embeddingFromBytes(row.readTable(_db.faces).embedding),
+          strong: row.readTable(_db.faces).size >= FaceRules.strongSize,
+          mediaId: row.readTable(_db.faces).mediaId,
         ),
     ];
     final people = [
@@ -219,6 +222,7 @@ final class FaceStore {
         (id: p.id, mean: embeddingFromBytes(p.centroid), count: p.faceCount),
     ];
     final result = await _groupInIsolate(people, faces);
+    if (result.personOfFace.isEmpty) return false;
 
     await _db.transaction(() async {
       final realId = <int, int>{};
@@ -254,8 +258,50 @@ final class FaceStore {
           );
         }
       });
+      await _dropStrays({
+        for (final entry in result.personOfFace.entries)
+          entry.key: realId[entry.value] ?? entry.value,
+      });
     });
     return true;
+  }
+
+  /// Faces just given to a person go back to nobody when they match the
+  /// person's faces poorly ([FaceRules.minScoreInPerson]), or when the
+  /// person already has a better-matching face in the same picture (a
+  /// person is in a picture once). Only faces given in this grouping (what
+  /// the user merged stays).
+  Future<void> _dropStrays(Map<int, int> personOfNewFace) async {
+    final people = personOfNewFace.values.toSet();
+    final stray = <int>[];
+    for (final id in people) {
+      final faces = await (_db.select(
+        _db.faces,
+      )..where((f) => f.personId.equals(id))).get();
+      final vectors = [for (final f in faces) embeddingFromBytes(f.embedding)];
+      final mean = meanOf(vectors);
+      final scores = [for (final v in vectors) personScore(v, mean)];
+      // The best face of this person in each picture.
+      final bestInPicture = <String, int>{};
+      for (final (i, face) in faces.indexed) {
+        final known = bestInPicture[face.mediaId];
+        if (known == null || scores[i] > scores[known]) {
+          bestInPicture[face.mediaId] = i;
+        }
+      }
+      for (final (i, face) in faces.indexed) {
+        if (!personOfNewFace.containsKey(face.id)) continue;
+        if (scores[i] < FaceRules.minScoreInPerson ||
+            bestInPicture[face.mediaId] != i) {
+          stray.add(face.id);
+        }
+      }
+    }
+    if (stray.isEmpty) return;
+    await (_db.update(_db.faces)..where((f) => f.id.isIn(stray))).write(
+      const FacesCompanion(personId: Value(null), grouped: Value(false)),
+    );
+    await _repair(people);
   }
 
   /// Every person with their picture count and cover face.
@@ -453,6 +499,25 @@ final class FaceStore {
     for (final p in await _db.select(_db.people).get())
       (id: p.id, mean: embeddingFromBytes(p.centroid), count: p.faceCount),
   ];
+
+  /// Faces are found / read differently now: forget everything, every
+  /// picture is looked at again.
+  Future<void> resetAll() async {
+    await _db.transaction(() async {
+      await _db.delete(_db.faceRejections).go();
+      await _db.delete(_db.people).go();
+      await _db.delete(_db.faces).go();
+      await _db.delete(_db.faceScans).go();
+    });
+  }
+
+  /// Faces not given to anyone (yet).
+  Future<int> ungroupedCount() async =>
+      (_db.selectOnly(_db.faces)
+            ..addColumns([_db.faces.id.count()])
+            ..where(_db.faces.grouped.equals(false)))
+          .map((r) => r.read(_db.faces.id.count()) ?? 0)
+          .getSingle();
 
   /// The grouping rules changed: every face is grouped again from scratch
   /// (faces stay, people and "Not this person" go).

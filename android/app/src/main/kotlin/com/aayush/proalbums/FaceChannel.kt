@@ -43,7 +43,7 @@ import kotlin.math.sqrt
  *    have close embeddings.
  *
  * How: Android's own thumbnail at ≤1024 px (upright) → ML Kit finds the
- * faces and 5 points (eyes, nose, mouth corners) → the face is turned and
+ * faces and their eyes and mouth corners → the face is turned and
  * scaled so those points sit where the model expects them (112×112) →
  * SFace (OpenCV Zoo, Apache-2.0) gives the embedding. Nothing leaves the
  * phone.
@@ -59,7 +59,9 @@ class FaceChannel(private val context: Context) : MethodChannel.MethodCallHandle
     private val detector: FaceDetector by lazy {
         FaceDetection.getClient(
             FaceDetectorOptions.Builder()
-                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+                // Accurate: better eye / mouth points = better embeddings
+                // (slower, but each picture is looked at once).
+                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
                 .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
                 .setMinFaceSize(MIN_FACE_SHARE)
                 .build(),
@@ -103,6 +105,15 @@ class FaceChannel(private val context: Context) : MethodChannel.MethodCallHandle
         )
         val args = Bundle().apply {
             putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_EXCLUDE)
+            // Not screenshots (faces of other apps' screens, Aayush).
+            putString(
+                ContentResolver.QUERY_ARG_SQL_SELECTION,
+                "${MediaStore.MediaColumns.RELATIVE_PATH} NOT LIKE ?",
+            )
+            putStringArray(
+                ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+                arrayOf("%Screenshots%"),
+            )
             // Newest first: the pictures people look at come in first.
             putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, "${MediaStore.MediaColumns.DATE_TAKEN} DESC")
         }
@@ -155,21 +166,23 @@ class FaceChannel(private val context: Context) : MethodChannel.MethodCallHandle
                 if (box.width() < MIN_FACE_PX) continue
                 // Turned too far sideways: the model cannot tell who it is.
                 if (abs(face.headEulerAngleY) > MAX_TURN) continue
+                // Eyes and mouth corners only: ML Kit's nose point is the
+                // BASE of the nose, the model's is the TIP — using it tilted
+                // every face a little.
                 val points = listOf(
-                    FaceLandmark.LEFT_EYE, FaceLandmark.RIGHT_EYE, FaceLandmark.NOSE_BASE,
+                    FaceLandmark.LEFT_EYE, FaceLandmark.RIGHT_EYE,
                     FaceLandmark.MOUTH_LEFT, FaceLandmark.MOUTH_RIGHT,
                 ).map { face.getLandmark(it)?.position ?: return@map null }
                 if (points.any { it == null }) continue
                 val p = points.requireNoNulls()
                 // As seen in the picture: eye on the left first, then right.
                 val eyes = listOf(p[0], p[1]).sortedBy { it.x }
-                val mouth = listOf(p[3], p[4]).sortedBy { it.x }
+                val mouth = listOf(p[2], p[3]).sortedBy { it.x }
                 val source = floatArrayOf(
                     eyes[0].x, eyes[0].y, eyes[1].x, eyes[1].y,
-                    p[2].x, p[2].y,
                     mouth[0].x, mouth[0].y, mouth[1].x, mouth[1].y,
                 )
-                val crop = aligned(picture, FaceAlign.similarity(source, FaceAlign.TEMPLATE))
+                val crop = aligned(picture, FaceAlign.similarity(source, FaceAlign.EYES_AND_MOUTH))
                 val embedding = embed(crop)
                 val sharpness = sharpness(crop)
                 crop.recycle()
@@ -281,6 +294,12 @@ internal object FaceAlign {
      */
     val TEMPLATE = floatArrayOf(
         38.2946f, 51.6963f, 73.5318f, 51.5014f, 56.0252f, 71.7366f,
+        41.5493f, 92.3655f, 70.7299f, 92.2041f,
+    )
+
+    /** [TEMPLATE] without the nose: eye left, eye right, mouth left, right. */
+    val EYES_AND_MOUTH = floatArrayOf(
+        38.2946f, 51.6963f, 73.5318f, 51.5014f,
         41.5493f, 92.3655f, 70.7299f, 92.2041f,
     )
 
