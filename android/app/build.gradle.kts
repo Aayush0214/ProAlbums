@@ -34,6 +34,11 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // ONNX Runtime finds its Java classes from native code by name.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }
@@ -54,6 +59,12 @@ dependencies {
     implementation("androidx.media3:media3-transformer:1.9.2")
     implementation("androidx.media3:media3-effect:1.9.2")
     implementation("androidx.media3:media3-common:1.9.2")
+
+    // Intelligent classification > People: ML Kit finds the faces (model
+    // inside the app, no download), SFace (OpenCV Zoo, Apache-2.0, in
+    // assets/models) tells who it is, run by ONNX Runtime.
+    implementation("com.google.mlkit:face-detection:16.1.7")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
 
     // Computer-side tests of the vault's encryption (android/app/src/test).
     testImplementation("junit:junit:4.13.2")

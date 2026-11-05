@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/core/widgets/theme_selector_card.dart';
+import 'package:proalbums/features/classification/presentation/classification_widgets.dart';
 import 'package:proalbums/features/cleanup/presentation/cleanup_row.dart';
 import 'package:proalbums/features/settings/presentation/providers/app_version_provider.dart';
 import 'package:proalbums/features/trash/presentation/widgets/recently_deleted_setting_tile.dart';
@@ -47,7 +48,7 @@ class SettingsScreen extends ConsumerWidget {
           const _Section(
             title: 'Library and editing',
             children: [
-              _ComingSoonSwitch(title: 'Intelligent classification'),
+              ClassificationSettingTile(),
               CleanupSettingTile(),
               _ComingSoonTile(title: 'Save method after editing'),
             ],

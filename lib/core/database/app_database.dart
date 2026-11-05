@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:proalbums/core/database/tables/cleanup_fingerprints.dart';
 import 'package:proalbums/core/database/tables/compressed_media.dart';
+import 'package:proalbums/core/database/tables/faces.dart';
 import 'package:proalbums/core/database/tables/favorites.dart';
 
 part 'app_database.g.dart';
@@ -14,14 +15,24 @@ part 'app_database.g.dart';
 ///
 /// Tables are added feature by feature. Every time a table changes: bump
 /// [schemaVersion] and add a step in `onUpgrade`.
-@DriftDatabase(tables: [Favorites, CompressedMedia, CleanupFingerprints])
+@DriftDatabase(
+  tables: [
+    Favorites,
+    CompressedMedia,
+    CleanupFingerprints,
+    FaceScans,
+    Faces,
+    People,
+    FaceRejections,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   /// Pass an in-memory executor in tests: `AppDatabase(NativeDatabase.memory())`.
   AppDatabase([QueryExecutor? executor])
       : super(executor ?? driftDatabase(name: 'pro_album'));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -38,6 +49,15 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) await m.createTable(compressedMedia);
           // Version 5: Cleanup suggestions fingerprints.
           if (from < 5) await m.createTable(cleanupFingerprints);
+          // Version 6: Intelligent classification > People.
+          if (from < 6) {
+            await m.createTable(faceScans);
+            await m.createTable(faces);
+            await m.createIndex(facesMedia);
+            await m.createIndex(facesPerson);
+            await m.createTable(people);
+            await m.createTable(faceRejections);
+          }
         },
       );
 }

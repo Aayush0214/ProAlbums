@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/app/navigation/last_tab_provider.dart';
 import 'package:proalbums/app/navigation/main_tab.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
+import 'package:proalbums/features/classification/presentation/classification_widgets.dart';
 import 'package:proalbums/shared/shell/shell_bottom_bar_provider.dart';
 import 'package:proalbums/shared/widgets/glass_container.dart';
 
@@ -37,7 +38,7 @@ class MainShellPage extends ConsumerWidget {
       // MediaQuery.padding.bottom automatically includes the bar height, so
       // scrollable just need `padding: MediaQuery.paddingOf(context)`.
       extendBody: true,
-      body: navigationShell,
+      body: ClassificationAutoStart(child: navigationShell),
       bottomNavigationBar: barHidden
           ? null
           : GlassContainer(
