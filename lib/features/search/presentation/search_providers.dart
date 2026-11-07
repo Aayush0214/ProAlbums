@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:proalbums/core/database/database_providers.dart';
+import 'package:proalbums/core/logging/app_logger.dart';
 import 'package:proalbums/features/classification/domain/thing_rules.dart';
 import 'package:proalbums/features/classification/presentation/classification_providers.dart';
 import 'package:proalbums/features/classification/presentation/people_providers.dart';
@@ -10,6 +12,7 @@ import 'package:proalbums/features/gallery/presentation/grid/gallery_row.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_rows_builder.dart';
 import 'package:proalbums/features/gallery/presentation/providers/media_providers.dart';
 import 'package:proalbums/features/search/data/search_repository.dart';
+import 'package:proalbums/features/search/domain/file_name_date.dart';
 import 'package:proalbums/features/search/domain/search_rules.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -18,17 +21,89 @@ part 'search_providers.g.dart';
 @Riverpod(keepAlive: true)
 SearchRepository searchRepository(Ref ref) => const DeviceSearchRepository();
 
+@Riverpod(keepAlive: true)
+PhotoDateStore photoDateStore(Ref ref) =>
+    PhotoDateStore(ref.watch(appDatabaseProvider));
+
+/// The whole library with the RIGHT dates (newest first): pictures
+/// MediaStore has no date for (copied from another phone…) get the date of
+/// their EXIF, read once and remembered. Search and Memories use this.
+/// Then the date in the file name. [LibraryMedia.undated] = pictures whose
+/// date nobody knows (their date is when they were copied).
+@Riverpod(keepAlive: true)
+Future<LibraryMedia> libraryMedia(Ref ref) async {
+  ref.watch(mediaLibraryChangesProvider);
+  final repo = ref.read(searchRepositoryProvider);
+  final dates = ref.read(photoDateStoreProvider);
+  final listed = await repo.listMedia();
+  final known = await dates.read();
+  final modifiedOf = {for (final l in listed) l.media.id: l.modified};
+  final todo = [
+    for (final l in listed)
+      if (!l.dated &&
+          !l.media.video &&
+          known[l.media.id]?.modified != l.modified)
+        l.media.id,
+  ];
+  for (var i = 0; i < todo.length; i += _exifBatch) {
+    final ids = todo.sublist(i, (i + _exifBatch).clamp(0, todo.length));
+    final found = await repo.exifDates(ids);
+    await dates.save(ids, found, modifiedOf);
+    for (final id in ids) {
+      known[id] = (modified: modifiedOf[id] ?? 0, takenMs: found[id]);
+    }
+  }
+  if (todo.isNotEmpty) {
+    AppLogger.d('Library dates: ${todo.length} pictures read from their EXIF');
+  }
+  // No DATE_TAKEN: the EXIF date, else the date in the file name
+  // (IMG-20210209-WA0012.jpg…), else nobody knows (undated).
+  int? realDate(ListedMedia l) {
+    if (l.dated) return null;
+    return known[l.media.id]?.takenMs ??
+        dateFromFileName(l.media.name)?.millisecondsSinceEpoch;
+  }
+
+  final undated = <String>{};
+  final media = [
+    for (final l in listed)
+      if (realDate(l) case final taken?)
+        (
+          id: l.media.id,
+          name: l.media.name,
+          album: l.media.album,
+          takenMs: taken,
+          video: l.media.video,
+          width: l.media.width,
+          height: l.media.height,
+          durationMs: l.media.durationMs,
+        )
+      else
+        l.media,
+  ]..sort((a, b) => b.takenMs.compareTo(a.takenMs));
+  for (final l in listed) {
+    if (!l.dated && !l.media.video && realDate(l) == null) {
+      undated.add(l.media.id);
+    }
+  }
+  return (media: media, undated: undated);
+}
+
+/// The library with the right dates (see [libraryMedia]).
+typedef LibraryMedia = ({List<SearchMedia> media, Set<String> undated});
+
+const int _exifBatch = 200;
+
 /// Everything Search looks through. Built again when the library changes
 /// or a classification scan has news. With Intelligent classification off
 /// only the library itself (albums, file names, dates) is searched.
 @Riverpod(keepAlive: true)
 Future<SearchIndex> searchIndex(Ref ref) async {
   ref
-    ..watch(mediaLibraryChangesProvider)
     ..watch(faceScanProvider.select((s) => s.version))
     ..watch(placeScanProvider.select((s) => s.version))
     ..watch(thingScanProvider.select((s) => s.version));
-  final media = await ref.read(searchRepositoryProvider).listMedia();
+  final media = (await ref.watch(libraryMediaProvider.future)).media;
   final classification = await ref.watch(classificationEnabledProvider.future);
   if (!classification) return SearchIndex(media: media);
 

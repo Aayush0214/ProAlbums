@@ -1,7 +1,9 @@
 package com.aayush.proalbums
 
 import android.content.ContentResolver
+import android.content.ContentUris
 import android.content.Context
+import android.media.ExifInterface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -16,7 +18,10 @@ import java.util.concurrent.Executors
  * not in the trash), with what Search matches that the gallery list does
  * not carry: the file name and the folder (album) name.
  *  - listMedia: [{id, name, album, taken (ms), video, w, h (upright),
- *    duration (ms)}], newest first.
+ *    duration (ms), dated (DATE_TAKEN known), modified}], newest first.
+ *  - exifDates {ids}: id → when the picture was taken from its EXIF
+ *    (DateTimeOriginal, else DateTime; ms) for pictures MediaStore has no
+ *    date for; pictures without one are left out.
  */
 class SearchChannel(private val context: Context) : MethodChannel.MethodCallHandler {
 
@@ -30,6 +35,11 @@ class SearchChannel(private val context: Context) : MethodChannel.MethodCallHand
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "listMedia" -> background(result) { listMedia() }
+            "exifDates" -> {
+                val ids = call.argument<List<String>>("ids").orEmpty()
+                    .mapNotNull { it.toLongOrNull() }
+                background(result) { exifDates(ids) }
+            }
             else -> result.notImplemented()
         }
     }
@@ -47,6 +57,7 @@ class SearchChannel(private val context: Context) : MethodChannel.MethodCallHand
             MediaStore.Files.FileColumns.HEIGHT,
             MediaStore.Files.FileColumns.ORIENTATION,
             MediaStore.Files.FileColumns.DURATION,
+            MediaStore.Files.FileColumns.DATE_MODIFIED,
         )
         val image = MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE
         val video = MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO
@@ -79,11 +90,36 @@ class SearchChannel(private val context: Context) : MethodChannel.MethodCallHand
                         "w" to if (turned) h else w,
                         "h" to if (turned) w else h,
                         "duration" to if (c.isNull(9)) 0L else c.getLong(9),
+                        // No DATE_TAKEN (copied from another phone…): the
+                        // real date is in the EXIF, see exifDates.
+                        "dated" to !c.isNull(3),
+                        "modified" to c.getLong(10),
                     ),
                 )
             }
         }
         return rows
+    }
+
+    private fun exifDates(ids: List<Long>): Map<String, Long> {
+        val out = mutableMapOf<String, Long>()
+        for (id in ids) {
+            val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+            try {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    val exif = ExifInterface(input)
+                    val taken = ExifDate.parse(
+                        exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
+                            ?: exif.getAttribute(ExifInterface.TAG_DATETIME),
+                        exif.getAttribute(ExifInterface.TAG_OFFSET_TIME_ORIGINAL),
+                    )
+                    if (taken != null) out[id.toString()] = taken
+                }
+            } catch (error: Exception) {
+                // Unreadable: no date (asked again only when the file changes).
+            }
+        }
+        return out
     }
 
     private fun <T> background(result: MethodChannel.Result, work: () -> T) {
@@ -99,5 +135,32 @@ class SearchChannel(private val context: Context) : MethodChannel.MethodCallHand
 
     internal companion object {
         const val CHANNEL = "com.aayush.proalbums/search"
+    }
+}
+
+/**
+ * Pure (JVM-tested): an EXIF date ("2021:02:09 18:42:07") as ms. With an
+ * offset ("+05:30") it is exact; without one it is read as the phone's
+ * time zone (where the picture was most likely taken). Empty / zero dates
+ * ("0000:00:00 00:00:00") and years before 1990 are no date.
+ */
+internal object ExifDate {
+    fun parse(date: String?, offset: String?, zone: java.util.TimeZone = java.util.TimeZone.getDefault()): Long? {
+        val text = date?.trim() ?: return null
+        val format = java.text.SimpleDateFormat("yyyy:MM:dd HH:mm:ss", java.util.Locale.ROOT)
+        format.isLenient = false
+        val clean = offset?.trim()
+        format.timeZone = if (clean != null && Regex("[+-]\\d{2}:\\d{2}").matches(clean)) {
+            java.util.TimeZone.getTimeZone("GMT$clean")
+        } else {
+            zone
+        }
+        val parsed = try {
+            format.parse(text)
+        } catch (error: java.text.ParseException) {
+            null
+        } ?: return null
+        val year = java.util.Calendar.getInstance(format.timeZone).apply { time = parsed }.get(java.util.Calendar.YEAR)
+        return if (year < 1990) null else parsed.time
     }
 }

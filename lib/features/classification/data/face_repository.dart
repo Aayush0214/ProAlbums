@@ -331,6 +331,24 @@ final class FaceStore {
   }
 
   /// The faces of one person, newest picture first.
+  /// Every face (Memories: who is in a picture, how good it looks).
+  Future<List<({String mediaId, int? personId, double size, double sharpness})>>
+  allFaces() async {
+    final f = _db.faces;
+    final rows = await (_db.selectOnly(
+      f,
+    )..addColumns([f.mediaId, f.personId, f.size, f.sharpness])).get();
+    return [
+      for (final row in rows)
+        (
+          mediaId: row.read(f.mediaId)!,
+          personId: row.read(f.personId),
+          size: row.read(f.size)!,
+          sharpness: row.read(f.sharpness)!,
+        ),
+    ];
+  }
+
   Future<List<StoredFace>> facesOf(int personId) async =>
       _facesOfPeople(personId: personId);
 

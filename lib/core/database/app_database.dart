@@ -4,6 +4,8 @@ import 'package:proalbums/core/database/tables/cleanup_fingerprints.dart';
 import 'package:proalbums/core/database/tables/compressed_media.dart';
 import 'package:proalbums/core/database/tables/faces.dart';
 import 'package:proalbums/core/database/tables/favorites.dart';
+import 'package:proalbums/core/database/tables/memories.dart';
+import 'package:proalbums/core/database/tables/photo_dates.dart';
 import 'package:proalbums/core/database/tables/photo_labels.dart';
 import 'package:proalbums/core/database/tables/places.dart';
 
@@ -30,6 +32,9 @@ part 'app_database.g.dart';
     PlaceNames,
     PhotoLabels,
     ThingExclusions,
+    Memories,
+    MemoryItems,
+    PhotoDates,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -38,7 +43,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'pro_album'));
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -89,6 +94,13 @@ class AppDatabase extends _$AppDatabase {
           if (from >= 7 && from < 12) {
             await m.addColumn(placeNames, placeNames.area);
           }
+          // Version 13: For You > Memories.
+          if (from < 13) {
+            await m.createTable(memories);
+            await m.createTable(memoryItems);
+          }
+          // Version 14: picture dates from the EXIF.
+          if (from < 14) await m.createTable(photoDates);
         },
       );
 }
