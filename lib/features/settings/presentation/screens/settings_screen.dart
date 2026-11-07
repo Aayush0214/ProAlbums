@@ -5,13 +5,14 @@ import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/core/widgets/theme_selector_card.dart';
 import 'package:proalbums/features/classification/presentation/classification_widgets.dart';
 import 'package:proalbums/features/cleanup/presentation/cleanup_row.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_setting_tiles.dart';
 import 'package:proalbums/features/settings/presentation/providers/app_version_provider.dart';
 import 'package:proalbums/features/trash/presentation/widgets/recently_deleted_setting_tile.dart';
 import 'package:proalbums/features/vault/presentation/widgets/vault_settings_tiles.dart';
 import 'package:proalbums/shared/widgets/app_back_button.dart';
 
-/// Settings: the theme, then the options in groups (Viewing, Library and
-/// editing, Privacy, About). Options whose feature is not built yet are
+/// Settings: the theme, then the options in groups (Viewing, Library,
+/// Privacy, About). Options whose feature is not built yet are
 /// shown greyed out with "Coming soon" — never a switch that does nothing.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -33,25 +34,14 @@ class SettingsScreen extends ConsumerWidget {
           const _Section(
             title: 'Viewing',
             children: [
-              _ComingSoonSwitch(
-                title: 'Autoplay Videos',
-                subtitle: 'Videos are muted by default when autoplaying.',
-              ),
-              _ComingSoonSwitch(title: 'Live photo autoplay'),
-              _ComingSoonSwitch(title: 'Keep screen on while viewing'),
-              _ComingSoonTile(
-                title: 'Auto-rotate when viewing photos',
-                value: 'Always',
-              ),
+              ViewerAutoplayTile(),
+              ViewerKeepScreenOnTile(),
+              ViewerAutoRotateTile(),
             ],
           ),
           const _Section(
-            title: 'Library and editing',
-            children: [
-              ClassificationSettingTile(),
-              CleanupSettingTile(),
-              _ComingSoonTile(title: 'Save method after editing'),
-            ],
+            title: 'Library',
+            children: [ClassificationSettingTile(), CleanupSettingTile()],
           ),
           const _Section(
             title: 'Privacy',
@@ -117,26 +107,6 @@ class _Section extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// A switch whose feature is not built yet: off and greyed out, saying so.
-class _ComingSoonSwitch extends StatelessWidget {
-  const _ComingSoonSwitch({required this.title, this.subtitle});
-
-  final String title;
-  final String? subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return SwitchListTile(
-      title: Text(title),
-      subtitle: Text(
-        subtitle == null ? 'Coming soon' : '$subtitle Coming soon.',
-      ),
-      value: false,
-      onChanged: null,
     );
   }
 }

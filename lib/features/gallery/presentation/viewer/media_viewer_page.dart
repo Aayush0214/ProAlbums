@@ -9,11 +9,13 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:proalbums/app/router/app_routes.dart';
 import 'package:proalbums/core/platform/app_orientation.dart';
+import 'package:proalbums/core/platform/screen_awake.dart';
 import 'package:proalbums/core/theme/app_colors.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/video_playback_controller.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_settings.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/video_player_page.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_math.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_bottom_bar.dart';
@@ -59,15 +61,23 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Only the viewer may turn sideways (the rest of the app is portrait).
-    AppOrientation.allowRotation();
+    // Only the viewer may turn sideways (the rest of the app is portrait),
+    // and only when Settings > Auto-rotate says Always.
+    unawaited(applyViewerRotation(ref));
+    // Settings > Keep screen on while viewing.
+    ref.listenManual(viewerKeepScreenOnProvider, (_, next) {
+      unawaited(ScreenAwake.keepOn(on: next.value ?? false, by: _screenHolder));
+    }, fireImmediately: true);
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _scheduleVideoPrepare(),
     );
   }
 
+  static const String _screenHolder = 'viewer';
+
   @override
   void dispose() {
+    unawaited(ScreenAwake.keepOn(on: false, by: _screenHolder));
     WidgetsBinding.instance.removeObserver(this);
     _prepareTimer?.cancel();
     _pageController?.dispose();
@@ -89,7 +99,11 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
       final list = ref.read(_items);
       if (_index >= list.length) return;
       final item = list[_index];
-      if (item.isVideo) ref.read(videoPlaybackProvider.notifier).prepare(item);
+      if (!item.isVideo) return;
+      final player = ref.read(videoPlaybackProvider.notifier);
+      // Settings > Autoplay Videos: it starts by itself, muted.
+      final autoplay = ref.read(viewerAutoplayProvider).value ?? false;
+      unawaited(autoplay ? player.autoplay(item) : player.prepare(item));
     });
   }
 

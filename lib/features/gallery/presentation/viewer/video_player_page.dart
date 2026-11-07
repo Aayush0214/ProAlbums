@@ -16,6 +16,7 @@ import 'package:proalbums/features/gallery/presentation/actions/media_actions.da
 import 'package:proalbums/features/gallery/presentation/viewer/providers/video_playback_controller.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_providers.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_settings.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/video_subtitles.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_video_tools.dart';
 import 'package:proalbums/shared/widgets/app_snack_bar.dart';
@@ -89,9 +90,14 @@ class _VideoPlayerPageState extends ConsumerState<VideoPlayerPage> {
   List<VideoTrack> _videoTracks = const [];
   String? _subtitleName;
 
+  /// Settings > Auto-rotate, read when the page opens (ref cannot be read
+  /// while it closes).
+  ViewerRotation? _viewerRotation;
+
   @override
   void initState() {
     super.initState();
+    _viewerRotation = ref.read(viewerAutoRotateProvider).value;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       // Opening the player = playing (like the system gallery).
@@ -119,7 +125,8 @@ class _VideoPlayerPageState extends ConsumerState<VideoPlayerPage> {
     if (_subtitleName != null) {
       unawaited(_controller?.setClosedCaptionFile(null));
     }
-    if (_rotationHeld) unawaited(AppOrientation.allowRotation());
+    // Back to the viewer's rule (Settings > Auto-rotate).
+    if (_rotationHeld) unawaited(applyRotation(_viewerRotation));
     super.dispose();
   }
 

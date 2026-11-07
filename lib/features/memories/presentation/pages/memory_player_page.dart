@@ -94,7 +94,7 @@ class _MemoryPlayerPageState extends ConsumerState<MemoryPlayerPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    unawaited(ScreenAwake.keepOn(on: true));
+    unawaited(ScreenAwake.keepOn(on: true, by: 'memory'));
     _inPicture.start();
     _tick = Timer.periodic(const Duration(milliseconds: 200), (_) {
       if (mounted && !_paused && !_finished) setState(() {});
@@ -107,7 +107,7 @@ class _MemoryPlayerPageState extends ConsumerState<MemoryPlayerPage>
     _tick?.cancel();
     _strip.dispose();
     unawaited(_music.dispose());
-    unawaited(ScreenAwake.keepOn(on: false));
+    unawaited(ScreenAwake.keepOn(on: false, by: 'memory'));
     super.dispose();
   }
 

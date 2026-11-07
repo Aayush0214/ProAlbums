@@ -12,6 +12,7 @@ import 'package:proalbums/features/gallery/presentation/images/media_thumbnail_i
 import 'package:proalbums/features/gallery/presentation/viewer/providers/video_playback_controller.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_providers.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_session_provider.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/providers/viewer_settings.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_math.dart';
 import 'package:proalbums/shared/widgets/slideshow_player.dart';
 
@@ -48,11 +49,16 @@ class _SlideshowPageState extends ConsumerState<SlideshowPage> {
   /// already seen there appear at once.
   final Map<int, ImageProvider> _images = {};
 
+  /// Settings > Auto-rotate, read when the page opens (ref cannot be read
+  /// while it closes).
+  ViewerRotation? _viewerRotation;
+
   @override
   void initState() {
     super.initState();
+    _viewerRotation = ref.read(viewerAutoRotateProvider).value;
     unawaited(ref.read(videoPlaybackProvider.notifier).pause());
-    unawaited(ScreenAwake.keepOn(on: true));
+    unawaited(ScreenAwake.keepOn(on: true, by: 'slideshow'));
     unawaited(
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky),
     );
@@ -66,10 +72,10 @@ class _SlideshowPageState extends ConsumerState<SlideshowPage> {
 
   @override
   void dispose() {
-    unawaited(ScreenAwake.keepOn(on: false));
-    // Back to the viewer's rules: turns with the phone, status bar only in
-    // portrait.
-    unawaited(AppOrientation.allowRotation());
+    unawaited(ScreenAwake.keepOn(on: false, by: 'slideshow'));
+    // Back to the viewer's rules: turns with the phone (as set in Settings),
+    // status bar only in portrait.
+    unawaited(applyRotation(_viewerRotation));
     unawaited(
       SystemChrome.setEnabledSystemUIMode(
         _landscape ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,

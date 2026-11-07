@@ -170,6 +170,26 @@ class VideoPlayback extends _$VideoPlayback {
     return _begin(item, play: true);
   }
 
+  /// Settings > "Autoplay Videos": the video starts by itself, MUTED (the
+  /// sound button turns it on). Already playing = nothing changes.
+  Future<void> autoplay(MediaItem item) async {
+    if (!state.muted) state = state.copyWith(muted: true);
+    final controller = _controller;
+    if (state.activeId == item.id && controller != null) {
+      await controller.setVolume(0);
+      if (!controller.value.isPlaying) {
+        state = state.copyWith(started: true);
+        await controller.play();
+      }
+      return;
+    }
+    if (state.activeId == item.id && state.status == VideoStatus.loading) {
+      if (!state.started) state = state.copyWith(started: true);
+      return;
+    }
+    await _begin(item, play: true);
+  }
+
   /// Get the player ready WITHOUT playing, while the person is still looking
   /// at the picture, so pressing play starts at once.
   Future<void> prepare(MediaItem item) {
@@ -422,7 +442,7 @@ class VideoPlayback extends _$VideoPlayback {
       _setAnchor(value.position);
       state = state.copyWith(isPlaying: value.isPlaying);
       // Screen stays on exactly while the video plays.
-      unawaited(ScreenAwake.keepOn(on: value.isPlaying));
+      unawaited(ScreenAwake.keepOn(on: value.isPlaying, by: 'video'));
     }
   }
 
@@ -449,6 +469,6 @@ class VideoPlayback extends _$VideoPlayback {
     _settleTimer?.cancel();
     controller?.removeListener(_onValue);
     unawaited(controller?.dispose());
-    unawaited(ScreenAwake.keepOn(on: false));
+    unawaited(ScreenAwake.keepOn(on: false, by: 'video'));
   }
 }
