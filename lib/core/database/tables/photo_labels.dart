@@ -23,6 +23,9 @@ class PhotoLabels extends Table {
   IntColumn get textChars => integer().withDefault(const Constant(0))();
   RealColumn get textArea => real().withDefault(const Constant(0))();
 
+  /// Search: the text read (lower case, one space apart; "" = none).
+  TextColumn get words => text().withDefault(const Constant(''))();
+
   /// In a Screenshots folder (never a document).
   BoolColumn get screenshot => boolean().withDefault(const Constant(false))();
 

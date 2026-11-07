@@ -30,6 +30,10 @@ enum MediaContext {
   /// One thing's pictures (Intelligent classification > Documents, Food…):
   /// the album actions plus "Remove this type" last in More.
   thing,
+
+  /// A person opened from the Search tab: a plain grid with the library
+  /// actions plus "Not this person" last in More (like the system gallery).
+  searchPerson,
 }
 
 /// Every action a selection or the viewer can offer, in ONE list. An action
@@ -128,6 +132,21 @@ SelectionActions selectionActionsFor(MediaContext context) => switch (context) {
       MediaAction.removeThisType,
     ],
   ),
+  MediaContext.searchPerson => const SelectionActions(
+    bar: [
+      MediaAction.share,
+      MediaAction.moveCopy,
+      MediaAction.collage,
+      MediaAction.delete,
+    ],
+    more: [
+      MediaAction.hide,
+      MediaAction.copyToClipboard,
+      MediaAction.convertPdf,
+      MediaAction.print,
+      MediaAction.notThisPerson,
+    ],
+  ),
   MediaContext.person => const SelectionActions(
     bar: [
       MediaAction.share,
@@ -202,7 +221,9 @@ List<MediaAction> viewerMoreActionsFor(MediaContext context, MediaItem item) {
     MediaAction.convertPdf,
     MediaAction.print,
     // Opened from a person / a thing: last, like the system gallery.
-    if (context == MediaContext.person) MediaAction.notThisPerson,
+    if (context == MediaContext.person ||
+        context == MediaContext.searchPerson)
+      MediaAction.notThisPerson,
     if (context == MediaContext.thing) MediaAction.removeThisType,
   ];
 }
@@ -220,6 +241,7 @@ List<MediaAction>? viewerBarActionsFor(
   MediaContext.album ||
   MediaContext.search ||
   MediaContext.person ||
+  MediaContext.searchPerson ||
   MediaContext.thing => null,
 };
 

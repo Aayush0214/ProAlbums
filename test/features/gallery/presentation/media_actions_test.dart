@@ -221,4 +221,18 @@ void main() {
       isNot(contains(MediaAction.removeThisType)),
     );
   });
+
+  test('person from Search: the library bar, Not this person last in More', () {
+    final actions = selectionActionsFor(MediaContext.searchPerson);
+    expect(actions.bar, selectionActionsFor(MediaContext.library).bar);
+    expect(actions.more.last, MediaAction.notThisPerson);
+    expect(
+      viewerMoreActionsFor(
+        MediaContext.searchPerson,
+        _item(MediaType.image),
+      ).last,
+      MediaAction.notThisPerson,
+    );
+    expect(viewerBarActionsFor(MediaContext.searchPerson), isNull);
+  });
 }

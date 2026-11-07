@@ -50,4 +50,15 @@ class LabelTextTest {
         assertEquals(1.0, TextStats.of(listOf(1 to 5000L), 1000).area, 1e-9)
         assertEquals(0.0, TextStats.of(emptyList(), 1000).area, 1e-9)
     }
+
+    @Test
+    fun searchTextIsLowerCaseOneSpaceApart() {
+        assertEquals("my definition of wealth", SearchText.of("My Definition\nOf  Wealth "))
+        assertEquals("", SearchText.of("  \n "))
+    }
+
+    @Test
+    fun searchTextIsCut() {
+        assertEquals(SearchText.MAX, SearchText.of("a ".repeat(4000)).length)
+    }
 }

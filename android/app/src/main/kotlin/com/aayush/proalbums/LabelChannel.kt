@@ -32,11 +32,15 @@ import java.util.concurrent.Executors
  *  - listImages: every picture (not in the trash): id, modified, taken.
  *  - labels {ids}: id → labels "Label:0.83,Label:0.71" (confidence ≥
  *    MIN_CONFIDENCE, "" = none), camera (front / back / ""), textChars +
- *    textArea (ML Kit text recognition, for Documents), screenshot.
+ *    textArea (ML Kit text recognition, for Documents), text (what was
+ *    read, for Search; see SearchText), screenshot.
  */
 class LabelChannel(private val context: Context) : MethodChannel.MethodCallHandler {
 
     private val worker = Executors.newSingleThreadExecutor()
+
+    /** The viewer's text boxes: not behind a scan batch. */
+    private val viewer = Executors.newSingleThreadExecutor()
     private val pool = Executors.newFixedThreadPool(2)
     private val main = Handler(Looper.getMainLooper())
 
@@ -62,6 +66,10 @@ class LabelChannel(private val context: Context) : MethodChannel.MethodCallHandl
                 val ids = call.argument<List<String>>("ids").orEmpty()
                     .mapNotNull { it.toLongOrNull() }
                 background(result) { labels(ids) }
+            }
+            "textLines" -> {
+                val id = call.argument<String>("id")?.toLongOrNull()
+                if (id == null) result.success(null) else background(result, viewer) { textLines(id) }
             }
             else -> result.notImplemented()
         }
@@ -96,6 +104,28 @@ class LabelChannel(private val context: Context) : MethodChannel.MethodCallHandl
         return rows
     }
 
+    /**
+     * The viewer's [T] button: every line of text in one picture as a box
+     * [left, top, right, bottom], each 0–1 of the upright picture (read at
+     * up to [LINES_SIDE] px, sharper than the scan).
+     */
+    private fun textLines(id: Long): List<List<Double>> {
+        val uri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+        val picture = context.contentResolver.loadThumbnail(uri, Size(LINES_SIDE, LINES_SIDE), null)
+        try {
+            val w = picture.width.toDouble()
+            val h = picture.height.toDouble()
+            val read = Tasks.await(reader.process(InputImage.fromBitmap(picture, 0)))
+            return read.textBlocks.flatMap { it.lines }.mapNotNull { line ->
+                val box = line.boundingBox ?: return@mapNotNull null
+                listOf(box.left / w, box.top / h, box.right / w, box.bottom / h)
+                    .map { it.coerceIn(0.0, 1.0) }
+            }
+        } finally {
+            picture.recycle()
+        }
+    }
+
     private fun labels(ids: List<Long>): Map<String, Map<String, Any>> {
         val shots = screenshotsAmong(ids)
         val jobs = ids.map { id ->
@@ -108,17 +138,21 @@ class LabelChannel(private val context: Context) : MethodChannel.MethodCallHandl
                     } else {
                         loaded.copy(Bitmap.Config.ARGB_8888, false).also { loaded.recycle() }
                     }
-                    val (labelText, text) = try {
+                    val (labelText, text, words) = try {
                         val image = InputImage.fromBitmap(picture, 0)
                         val found = Tasks.await(labeler.process(image))
                         val read = Tasks.await(reader.process(image))
-                        LabelText.of(found.map { it.text to it.confidence }) to TextStats.of(
-                            blocks = read.textBlocks.map { block ->
-                                val box = block.boundingBox
-                                val area = if (box == null) 0L else box.width().toLong() * box.height()
-                                block.text.count { !it.isWhitespace() } to area
-                            },
-                            pictureArea = picture.width.toLong() * picture.height,
+                        Triple(
+                            LabelText.of(found.map { it.text to it.confidence }),
+                            TextStats.of(
+                                blocks = read.textBlocks.map { block ->
+                                    val box = block.boundingBox
+                                    val area = if (box == null) 0L else box.width().toLong() * box.height()
+                                    block.text.count { !it.isWhitespace() } to area
+                                },
+                                pictureArea = picture.width.toLong() * picture.height,
+                            ),
+                            SearchText.of(read.text),
                         )
                     } finally {
                         picture.recycle()
@@ -128,6 +162,7 @@ class LabelChannel(private val context: Context) : MethodChannel.MethodCallHandl
                         "camera" to cameraOf(uri),
                         "textChars" to text.chars,
                         "textArea" to text.area,
+                        "text" to words,
                         "screenshot" to (id in shots),
                     )
                 } catch (error: Throwable) {
@@ -175,8 +210,12 @@ class LabelChannel(private val context: Context) : MethodChannel.MethodCallHandl
         ""
     }
 
-    private fun <T> background(result: MethodChannel.Result, work: () -> T) {
-        worker.execute {
+    private fun <T> background(
+        result: MethodChannel.Result,
+        executor: java.util.concurrent.Executor = worker,
+        work: () -> T,
+    ) {
+        executor.execute {
             val answer = try {
                 work()
             } catch (error: Throwable) {
@@ -191,6 +230,9 @@ class LabelChannel(private val context: Context) : MethodChannel.MethodCallHandl
 
         /** Big enough to read a document's text (the labeler shrinks it). */
         const val SIDE = 1024
+
+        /** The viewer's text boxes: sharp enough for small print. */
+        const val LINES_SIDE = 2048
 
         /** Labels below this are not kept (Dart decides per category). */
         const val MIN_CONFIDENCE = 0.5f
@@ -239,4 +281,21 @@ internal object LabelText {
         labels.joinToString(",") { (name, confidence) ->
             "${name.replace(",", " ").replace(":", " ")}:${"%.2f".format(java.util.Locale.ROOT, confidence)}"
         }
+}
+
+/**
+ * Pure (JVM-tested): the text read in a picture as Search keeps it: lower
+ * case, one space between words, at most [MAX] characters (a page of a
+ * document; a poster has far fewer).
+ */
+internal object SearchText {
+    const val MAX = 3000
+
+    fun of(raw: String): String {
+        val joined = raw.lowercase(java.util.Locale.ROOT)
+            .split(Regex("\\s+"))
+            .filter { it.isNotEmpty() }
+            .joinToString(" ")
+        return if (joined.length <= MAX) joined else joined.substring(0, MAX)
+    }
 }

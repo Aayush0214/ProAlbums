@@ -175,7 +175,7 @@ final class PlaceStore {
       final row = known[cell];
       if (row == null ||
           (row.name == null && row.checkedAt < retryBefore) ||
-          (row.name != null && row.label == null)) {
+          (row.name != null && (row.label == null || row.area == null))) {
         out.add(cell);
       }
     }
@@ -186,6 +186,7 @@ final class PlaceStore {
     String cell, {
     required String? name,
     required String? label,
+    required String? area,
     required DateTime now,
   }) => _db
       .into(_db.placeNames)
@@ -194,6 +195,7 @@ final class PlaceStore {
           cell: cell,
           name: Value(name),
           label: Value(label),
+          area: Value(area),
           checkedAt: now.millisecondsSinceEpoch,
         ),
       );
@@ -220,6 +222,22 @@ final class PlaceStore {
         row.cell: row.name!,
     };
     return placeAlbums(await _placed(), names);
+  }
+
+  /// Search: every named picture with its place and neighbourhood ("" =
+  /// none).
+  Future<List<({String id, String place, String area})>> named() async {
+    final names = {
+      for (final row in await (_db.select(
+        _db.placeNames,
+      )..where((n) => n.name.isNotNull())).get())
+        row.cell: row,
+    };
+    return [
+      for (final p in await _placed())
+        if (names[p.cell] case final row?)
+          (id: p.id, place: row.name!, area: row.area ?? ''),
+    ];
   }
 
   /// Totals (for the scan log).

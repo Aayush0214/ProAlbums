@@ -20,7 +20,11 @@ import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
 /// Select (icon or long press) → Hide (off this page only, "+" brings them
 /// back) / Merge (2 or more). "+" = the other people found.
 class PeoplePage extends ConsumerStatefulWidget {
-  const PeoplePage({super.key});
+  const PeoplePage({this.onOpenPerson, super.key});
+
+  /// Opens a person instead of the person page (the Search tab opens a
+  /// plain grid, no slideshow). null = the person page.
+  final void Function(BuildContext context, PersonSummary person)? onOpenPerson;
 
   @override
   ConsumerState<PeoplePage> createState() => _PeoplePageState();
@@ -137,6 +141,8 @@ class _PeoplePageState extends ConsumerState<PeoplePage> {
                 selected: selected,
                 onTap: (person) => selected != null
                     ? _toggle(person)
+                    : widget.onOpenPerson != null
+                    ? widget.onOpenPerson!(context, person)
                     : unawaited(
                         context.push<void>(AppRoutes.person(person.id)),
                       ),

@@ -12,6 +12,10 @@ abstract interface class LabelScanner {
   /// id → stored label text ("" = nothing seen) and which camera ("front",
   /// "back", "" = unknown); unreadable pictures are left out.
   Future<Map<String, SeenPicture>> labels(List<String> ids);
+
+  /// The viewer's [T]: each text line of a picture as [left, top, right,
+  /// bottom], 0–1 of the upright picture (empty = none / unreadable).
+  Future<List<List<double>>> textLines(String id);
 }
 
 /// What LabelChannel found in a picture.
@@ -21,6 +25,9 @@ typedef SeenPicture = ({
   int textChars,
   double textArea,
   bool screenshot,
+
+  /// The text read (for Search).
+  String words,
 });
 
 final class MethodChannelLabelScanner implements LabelScanner {
@@ -51,6 +58,23 @@ final class MethodChannelLabelScanner implements LabelScanner {
   }
 
   @override
+  Future<List<List<double>>> textLines(String id) async {
+    try {
+      final lines = await _channel.invokeListMethod<List<Object?>>(
+        'textLines',
+        {'id': id},
+      );
+      return [
+        for (final line in lines ?? const <List<Object?>>[])
+          if (line.length == 4) [for (final v in line) (v! as num).toDouble()],
+      ];
+    } on Object catch (error, stackTrace) {
+      AppLogger.e('Text lines failed', error: error, stackTrace: stackTrace);
+      return const [];
+    }
+  }
+
+  @override
   Future<Map<String, SeenPicture>> labels(List<String> ids) async {
     try {
       final map = await _channel.invokeMapMethod<String, Map<Object?, Object?>>(
@@ -66,6 +90,7 @@ final class MethodChannelLabelScanner implements LabelScanner {
             textChars: (entry.value['textChars'] as num? ?? 0).toInt(),
             textArea: (entry.value['textArea'] as num? ?? 0).toDouble(),
             screenshot: entry.value['screenshot'] as bool? ?? false,
+            words: entry.value['text'] as String? ?? '',
           ),
       };
     } on Object catch (error, stackTrace) {
@@ -112,6 +137,7 @@ final class ThingStore {
             textChars: Value(seen[id]?.textChars ?? 0),
             textArea: Value(seen[id]?.textArea ?? 0),
             screenshot: Value(seen[id]?.screenshot ?? false),
+            words: Value(seen[id]?.words ?? ''),
           ),
       ]);
     });
@@ -174,6 +200,33 @@ final class ThingStore {
           ),
         ),
     ];
+  }
+
+  /// Search: labels + text read of every looked-at picture.
+  Future<List<({String id, String labels, String words})>> searchable() async {
+    final rows =
+        await (_db.selectOnly(_db.photoLabels)..addColumns([
+              _db.photoLabels.mediaId,
+              _db.photoLabels.labels,
+              _db.photoLabels.words,
+            ]))
+            .get();
+    return [
+      for (final row in rows)
+        (
+          id: row.read(_db.photoLabels.mediaId)!,
+          labels: row.read(_db.photoLabels.labels)!,
+          words: row.read(_db.photoLabels.words)!,
+        ),
+    ];
+  }
+
+  /// How many characters the scan read in a picture (0 = none / not yet).
+  Future<int> textCharsOf(String id) async {
+    final row = await (_db.select(
+      _db.photoLabels,
+    )..where((p) => p.mediaId.equals(id))).getSingleOrNull();
+    return row?.textChars ?? 0;
   }
 
   /// The pictures People found faces in (for Group photo / Selfie).

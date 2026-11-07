@@ -33,8 +33,9 @@ abstract final class ThingRules {
   static const double docAreaWithPeople = 0.18;
 
   /// Change when LabelChannel reads pictures differently: every picture is
-  /// looked at again (2: + which camera, 3: + text read, 1024 px).
-  static const int scanVersion = 3;
+  /// looked at again (2: + which camera, 3: + text read, 1024 px, 4: + the
+  /// text itself, for Search).
+  static const int scanVersion = 4;
 }
 
 /// The things of Intelligent classification, in the system gallery's

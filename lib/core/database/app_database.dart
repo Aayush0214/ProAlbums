@@ -38,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'pro_album'));
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -81,6 +81,13 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(photoLabels, photoLabels.textChars);
             await m.addColumn(photoLabels, photoLabels.textArea);
             await m.addColumn(photoLabels, photoLabels.screenshot);
+          }
+          // Version 12: the text read in a picture, for Search.
+          if (from >= 9 && from < 12) {
+            await m.addColumn(photoLabels, photoLabels.words);
+          }
+          if (from >= 7 && from < 12) {
+            await m.addColumn(placeNames, placeNames.area);
           }
         },
       );

@@ -33,6 +33,10 @@ class PlaceNames extends Table {
   /// ("Khilachipur-Ujjain Division"); null = not asked yet / no answer.
   TextColumn get label => text().nullable()();
 
+  /// Search: the neighbourhood ("Chingrajpara"); "" = none, null = not
+  /// asked yet (named before Search existed: asked once more).
+  TextColumn get area => text().nullable()();
+
   /// When it was asked (ms).
   IntColumn get checkedAt => integer()();
 

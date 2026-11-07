@@ -6,6 +6,10 @@ abstract final class AppRoutes {
   static const String forYou = '/for-you';
   static const String search = '/search';
 
+  /// Typing a search (a page inside the Search tab).
+  static const String searchQuerySegment = 'query';
+  static const String searchQuery = '/search/query';
+
   // Full-screen pages (open above the bottom bar)
   static const String settings = '/settings';
   static const String permission = '/permission';
@@ -74,6 +78,12 @@ abstract final class AppRoutes {
 
   /// One person's page (People).
   static String person(int personId) => '/person/$personId';
+
+  /// The People page opened from the Search tab (a person = plain grid).
+  static const String searchPeople = '/search-people';
+
+  /// A Search result (extra: SearchTarget).
+  static const String searchResult = '/search-result';
 
   static const String thingPattern = '/thing/:kind';
 

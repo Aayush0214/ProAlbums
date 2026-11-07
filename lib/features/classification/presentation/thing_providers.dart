@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show Rect;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -226,3 +227,25 @@ List<GalleryRow> thingRows(
   columns: thingGridColumns,
   alignToEnd: false,
 );
+
+/// Fewer characters than this is no text worth the viewer's [T] button
+/// (a stray letter in a pattern).
+const int _minViewerTextChars = 4;
+
+/// The viewer's [T] button: the scan read text in this picture (only with
+/// Intelligent classification on).
+@riverpod
+Future<bool> photoHasText(Ref ref, String mediaId) async {
+  if (!await ref.watch(classificationEnabledProvider.future)) return false;
+  ref.watch(thingScanProvider.select((s) => s.version));
+  final chars = await ref.read(thingStoreProvider).textCharsOf(mediaId);
+  return chars >= _minViewerTextChars;
+}
+
+/// The text lines of a picture (each 0–1 of the upright picture), read
+/// when the viewer's [T] is turned on.
+@riverpod
+Future<List<Rect>> photoTextLines(Ref ref, String mediaId) async => [
+  for (final l in await ref.read(labelScannerProvider).textLines(mediaId))
+    Rect.fromLTRB(l[0], l[1], l[2], l[3]),
+];

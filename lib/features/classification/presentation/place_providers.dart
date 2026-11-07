@@ -153,6 +153,7 @@ class PlaceScan extends _$PlaceScan {
         cell,
         name: name,
         label: address == null ? null : placeLabelFrom(address),
+        area: address == null ? null : placeAreaFrom(address),
         now: DateTime.now(),
       );
       if (name != null && ++named % 20 == 0) _bump();

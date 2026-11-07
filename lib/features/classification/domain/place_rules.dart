@@ -47,6 +47,13 @@ String? placeLabelFrom(Map<String, String?> address) {
   return parts.isEmpty ? placeNameFrom(address) : parts.join('-');
 }
 
+/// Search's neighbourhood of an address ("Chingrajpara"); "" = none
+/// (or the same as the place name).
+String placeAreaFrom(Map<String, String?> address) {
+  final area = address['subLocality']?.trim() ?? '';
+  return area == placeNameFrom(address) ? '' : area;
+}
+
 /// A picture with a place.
 typedef PlacedPicture = ({String id, int takenMs, String cell});
 

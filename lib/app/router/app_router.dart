@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:proalbums/app/navigation/last_tab_provider.dart';
 import 'package:proalbums/app/router/app_keys.dart';
@@ -36,6 +39,9 @@ import 'package:proalbums/features/permissions/presentation/pages/permission_pag
 import 'package:proalbums/features/permissions/presentation/providers/media_permission_notifier.dart';
 import 'package:proalbums/features/recommended/presentation/pages/for_you_page.dart';
 import 'package:proalbums/features/search/presentation/pages/search_page.dart';
+import 'package:proalbums/features/search/presentation/pages/search_query_page.dart';
+import 'package:proalbums/features/search/presentation/pages/search_result_page.dart';
+import 'package:proalbums/features/search/presentation/search_providers.dart';
 import 'package:proalbums/features/settings/presentation/screens/settings_screen.dart';
 import 'package:proalbums/features/storage/presentation/pages/storage_analysis_page.dart';
 import 'package:proalbums/features/trash/presentation/pages/recently_deleted_page.dart';
@@ -114,6 +120,26 @@ GoRouter appRouter(Ref ref) {
               GoRoute(
                 path: AppRoutes.search,
                 builder: (context, state) => const SearchPage(),
+                routes: [
+                  // Typing a search: its own page INSIDE the Search tab (the
+                  // bottom bar stays, Back closes it like any page). extra =
+                  // text to search at once (a recent search), else empty.
+                  GoRoute(
+                    path: AppRoutes.searchQuerySegment,
+                    pageBuilder: (context, state) => CustomTransitionPage<void>(
+                      key: state.pageKey,
+                      transitionDuration: const Duration(milliseconds: 150),
+                      reverseTransitionDuration: const Duration(
+                        milliseconds: 150,
+                      ),
+                      transitionsBuilder: (context, animation, _, child) =>
+                          FadeTransition(opacity: animation, child: child),
+                      child: SearchQueryPage(
+                        initialText: state.extra as String? ?? '',
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -334,6 +360,30 @@ GoRouter appRouter(Ref ref) {
             orElse: () => ThingKind.documents,
           ),
         ),
+      ),
+      // Search tab > People > More: a person opens a plain grid.
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.searchPeople,
+        builder: (context, state) => PeoplePage(
+          onOpenPerson: (context, person) => unawaited(
+            context.push<void>(
+              AppRoutes.searchResult,
+              extra: SearchTarget(
+                kind: SearchTargetKind.person,
+                key: '${person.id}',
+                title: person.name ?? '',
+              ),
+            ),
+          ),
+        ),
+      ),
+      // Search tab > a result (an answer, View all, a person / place / type).
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.searchResult,
+        builder: (context, state) =>
+            SearchResultPage(target: state.extra! as SearchTarget),
       ),
       // Slideshow from the viewer (its list, from the picture on screen).
       GoRoute(

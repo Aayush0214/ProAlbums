@@ -46,6 +46,7 @@ class MainActivity : FlutterFragmentActivity() {
         CleanupChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         FaceChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         LabelChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
+        SearchChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         placeChannel = PlaceChannel(this)
         placeChannel.register(flutterEngine.dartExecutor.binaryMessenger)
         vaultChannel = VaultChannel(this)

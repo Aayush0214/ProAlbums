@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:proalbums/core/theme/app_colors.dart';
+import 'package:proalbums/features/classification/presentation/thing_providers.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/domain/entities/thumbnail_request.dart';
 import 'package:proalbums/features/gallery/presentation/images/media_thumbnail_image.dart';
@@ -20,11 +22,16 @@ class ViewerPageItem extends ConsumerStatefulWidget {
   const ViewerPageItem({
     required this.item,
     required this.onSingleTap,
+    this.showText = false,
     super.key,
   });
 
   final MediaItem item;
   final VoidCallback onSingleTap;
+
+  /// The viewer's [T] is on: every line of text is highlighted (boxes on
+  /// the picture, they follow zoom and move).
+  final bool showText;
 
   @override
   ConsumerState<ViewerPageItem> createState() => _ViewerPageItemState();
@@ -140,6 +147,10 @@ class _ViewerPageItemState extends ConsumerState<ViewerPageItem>
       );
     }
 
+    final lines = widget.showText
+        ? ref.watch(photoTextLinesProvider(item.id)).value ?? const <Rect>[]
+        : const <Rect>[];
+
     // ONE layer: while the big picture loads, ExtendedImage shows the small
     // thumbnail in its place, then swaps in the picture. (Two layers on top of
     // each other showed a "duplicate" as soon as the picture was zoomed.)
@@ -169,6 +180,10 @@ class _ViewerPageItemState extends ConsumerState<ViewerPageItem>
           inPageView: true,
         ),
         onDoubleTap: _onDoubleTap,
+        afterPaintImage: lines.isEmpty
+            ? null
+            : (canvas, rect, image, paint) =>
+                  _paintTextLines(canvas, rect, lines),
         loadStateChanged: (state) {
           if (state.extendedImageLoadState == LoadState.completed) {
             return state.completedWidget;
@@ -176,6 +191,26 @@ class _ViewerPageItemState extends ConsumerState<ViewerPageItem>
           return placeholder;
         },
       ),
+    );
+  }
+}
+
+/// The [T] highlight: a soft dark box behind each line of text ([lines]
+/// are 0–1 of the picture, [rect] is where the picture is painted now).
+void _paintTextLines(Canvas canvas, Rect rect, List<Rect> lines) {
+  final paint = Paint()
+    ..color = AppColors.mediaBadgeFill.withValues(alpha: 0.35);
+  final pad = rect.shortestSide * 0.004;
+  for (final line in lines) {
+    final box = Rect.fromLTRB(
+      rect.left + line.left * rect.width - pad,
+      rect.top + line.top * rect.height - pad,
+      rect.left + line.right * rect.width + pad,
+      rect.top + line.bottom * rect.height + pad,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(box, Radius.circular(box.height * 0.18)),
+      paint,
     );
   }
 }

@@ -20,6 +20,7 @@ import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_bo
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_filmstrip.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_info_card.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_page_item.dart';
+import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_text_button.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/widgets/viewer_top_bar.dart';
 import 'package:proalbums/features/trash/presentation/widgets/delete_flow.dart';
 
@@ -49,6 +50,10 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
 
   // The Info card floating over the picture.
   bool _infoVisible = false;
+
+  /// The [T] button is on: text in the picture is highlighted (off again
+  /// on another page).
+  bool _textOn = false;
 
   @override
   void initState() {
@@ -123,10 +128,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
     }
     setState(() => _infoVisible = false);
     final VideoPlayerRequest request = (item: item, rotated: rotate);
-    await context.push<void>(
-      AppRoutes.videoPlayer,
-      extra: request,
-    );
+    await context.push<void>(AppRoutes.videoPlayer, extra: request);
     // Back here: the player set the system bars its own way.
     if (mounted) _applySystemUi();
   }
@@ -272,6 +274,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
                 setState(() {
                   _index = index;
                   _currentId = list[index].id;
+                  _textOn = false;
                 });
                 // Another page: its video (if any) starts only when asked.
                 ref.read(videoPlaybackProvider.notifier).close();
@@ -282,6 +285,7 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
                 key: ValueKey(items[index].id),
                 item: items[index],
                 onSingleTap: _toggleChrome,
+                showText: _textOn && items[index].id == current.id,
               ),
             ),
             // Tap outside the Info card closes it.
@@ -361,6 +365,28 @@ class _MediaViewerPageState extends ConsumerState<MediaViewerPage>
                         ),
                       ),
                     ),
+                  ),
+                ),
+              ),
+            // A picture with text: [T] at the right, above the strip; it
+            // highlights every line of text.
+            if (!current.isVideo)
+              _FadingBar(
+                visible: _chromeVisible,
+                alignment: Alignment.bottomRight,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: 16,
+                    bottom:
+                        68 +
+                        (landscape || _noBar ? 0 : 64) +
+                        12 +
+                        MediaQuery.paddingOf(context).bottom,
+                  ),
+                  child: ViewerTextButton(
+                    item: current,
+                    on: _textOn,
+                    onTap: () => setState(() => _textOn = !_textOn),
                   ),
                 ),
               ),
