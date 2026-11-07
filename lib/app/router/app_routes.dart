@@ -85,6 +85,16 @@ abstract final class AppRoutes {
   /// For You > Memories > More.
   static const String memories = '/memories';
 
+  static const String memoryGalleryPattern = '/memory/:memoryId';
+
+  /// A memory's pictures (View Gallery).
+  static String memoryGallery(int memoryId) => '/memory/$memoryId';
+
+  static const String memoryManagePattern = '/memory/:memoryId/manage';
+
+  /// A memory's Gallery management.
+  static String memoryManage(int memoryId) => '/memory/$memoryId/manage';
+
   /// For You > Featured > More.
   static const String featured = '/featured';
 

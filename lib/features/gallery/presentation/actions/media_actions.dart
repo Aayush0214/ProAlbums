@@ -34,6 +34,10 @@ enum MediaContext {
   /// A person opened from the Search tab: a plain grid with the library
   /// actions plus "Not this person" last in More (like the system gallery).
   searchPerson,
+
+  /// A memory's pictures (For You > View Gallery): Share, Set as cover,
+  /// Remove (from the memory), Delete; More = Copy to clipboard.
+  memory,
 }
 
 /// Every action a selection or the viewer can offer, in ONE list. An action
@@ -67,6 +71,10 @@ enum MediaAction {
 
   /// Take the picture(s) out of a person (nothing is deleted).
   notThisPerson('Not this person', icon: LucideIcons.userX),
+
+  /// Take the picture(s) out of a memory's shown pictures (nothing is
+  /// deleted).
+  removeFromMemory('Remove', icon: LucideIcons.imageMinus),
 
   /// Take the picture(s) out of a thing album (nothing is deleted).
   removeThisType('Remove this type');
@@ -131,6 +139,15 @@ SelectionActions selectionActionsFor(MediaContext context) => switch (context) {
       MediaAction.print,
       MediaAction.removeThisType,
     ],
+  ),
+  MediaContext.memory => const SelectionActions(
+    bar: [
+      MediaAction.share,
+      MediaAction.setAsCover,
+      MediaAction.removeFromMemory,
+      MediaAction.delete,
+    ],
+    more: [MediaAction.copyToClipboard],
   ),
   MediaContext.searchPerson => const SelectionActions(
     bar: [
@@ -242,6 +259,7 @@ List<MediaAction>? viewerBarActionsFor(
   MediaContext.search ||
   MediaContext.person ||
   MediaContext.searchPerson ||
+  MediaContext.memory ||
   MediaContext.thing => null,
 };
 

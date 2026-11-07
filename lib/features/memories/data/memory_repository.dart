@@ -178,6 +178,79 @@ final class MemoryStore {
     });
   }
 
+  /// Every picture of a memory (candidates), oldest first.
+  Future<List<({String id, int takenMs, bool shown})>> items(
+    int memoryId,
+  ) async {
+    final rows =
+        await (_db.select(_db.memoryItems)
+              ..where((i) => i.memoryId.equals(memoryId))
+              ..orderBy([(i) => OrderingTerm.asc(i.takenMs)]))
+            .get();
+    return [
+      for (final row in rows)
+        (id: row.mediaId, takenMs: row.takenMs, shown: row.shown),
+    ];
+  }
+
+  /// Gallery management: exactly [shown] are shown (the rules no longer
+  /// touch this memory's pictures).
+  Future<void> setShown(int memoryId, Set<String> shown) =>
+      _db.transaction(() async {
+        await (_db.update(_db.memoryItems)
+              ..where((i) => i.memoryId.equals(memoryId)))
+            .write(const MemoryItemsCompanion(shown: Value(false)));
+        if (shown.isNotEmpty) {
+          await (_db.update(_db.memoryItems)..where(
+                (i) => i.memoryId.equals(memoryId) & i.mediaId.isIn(shown),
+              ))
+              .write(const MemoryItemsCompanion(shown: Value(true)));
+        }
+        await _markEdited(memoryId);
+      });
+
+  /// Gallery management "+": pictures added (and shown).
+  Future<void> add(int memoryId, List<({String id, int takenMs})> pictures) =>
+      _db.transaction(() async {
+        await _db.batch((batch) {
+          batch.insertAllOnConflictUpdate(_db.memoryItems, [
+            for (final p in pictures)
+              MemoryItemsCompanion.insert(
+                memoryId: memoryId,
+                mediaId: p.id,
+                takenMs: p.takenMs,
+                shown: true,
+              ),
+          ]);
+        });
+        await _markEdited(memoryId);
+      });
+
+  /// View Gallery > Remove: no longer shown (still a candidate in Gallery
+  /// management).
+  Future<void> hide(int memoryId, Iterable<String> ids) =>
+      _db.transaction(() async {
+        await (_db.update(_db.memoryItems)..where(
+              (i) => i.memoryId.equals(memoryId) & i.mediaId.isIn(ids.toList()),
+            ))
+            .write(const MemoryItemsCompanion(shown: Value(false)));
+        await _markEdited(memoryId);
+      });
+
+  /// Set as cover.
+  Future<void> setCover(int memoryId, String mediaId) =>
+      (_db.update(_db.memories)..where((m) => m.id.equals(memoryId))).write(
+        MemoriesCompanion(coverId: Value(mediaId)),
+      );
+
+  Future<void> _markEdited(int memoryId) =>
+      (_db.update(_db.memories)..where((m) => m.id.equals(memoryId))).write(
+        MemoriesCompanion(
+          edited: const Value(true),
+          updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+        ),
+      );
+
   /// Rename.
   Future<void> rename(int id, String title) =>
       (_db.update(_db.memories)..where((m) => m.id.equals(id))).write(

@@ -34,6 +34,8 @@ import 'package:proalbums/features/gallery/presentation/viewer/video_player_page
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_page_route.dart';
 import 'package:proalbums/features/memories/presentation/pages/featured_page.dart';
 import 'package:proalbums/features/memories/presentation/pages/memories_page.dart';
+import 'package:proalbums/features/memories/presentation/pages/memory_gallery_page.dart';
+import 'package:proalbums/features/memories/presentation/pages/memory_manage_page.dart';
 import 'package:proalbums/features/pdf/presentation/pages/convert_pdf_page.dart';
 import 'package:proalbums/features/pdf/presentation/pages/pdf_adjust_image_page.dart';
 import 'package:proalbums/features/pdf/presentation/pages/pdf_page_editor_page.dart';
@@ -373,6 +375,20 @@ GoRouter appRouter(Ref ref) {
         parentNavigatorKey: rootNavigatorKey,
         path: AppRoutes.featured,
         builder: (context, state) => const FeaturedPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.memoryGalleryPattern,
+        builder: (context, state) => MemoryGalleryPage(
+          memoryId: int.tryParse(state.pathParameters['memoryId'] ?? '') ?? 0,
+        ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.memoryManagePattern,
+        builder: (context, state) => MemoryManagePage(
+          memoryId: int.tryParse(state.pathParameters['memoryId'] ?? '') ?? 0,
+        ),
       ),
       // Search tab > People > More: a person opens a plain grid.
       GoRoute(

@@ -235,4 +235,16 @@ void main() {
     );
     expect(viewerBarActionsFor(MediaContext.searchPerson), isNull);
   });
+
+  test('memory: Share / Set as cover / Remove / Delete, More = Copy', () {
+    final actions = selectionActionsFor(MediaContext.memory);
+    expect(actions.bar, [
+      MediaAction.share,
+      MediaAction.setAsCover,
+      MediaAction.removeFromMemory,
+      MediaAction.delete,
+    ]);
+    expect(actions.more, [MediaAction.copyToClipboard]);
+    expect(viewerBarActionsFor(MediaContext.memory), isNull);
+  });
 }

@@ -550,3 +550,12 @@ String featuredDateText(int takenMs) {
   final d = _local(takenMs);
   return '${_monthNames[d.month - 1]} ${d.day}, ${d.year}';
 }
+
+/// A memory's pictures are shown like an album (grid, viewer, actions).
+String memoryAlbumId(int memoryId) => 'memory:$memoryId';
+
+/// The memory of a [memoryAlbumId] (null = not a memory).
+int? memoryIdOfAlbum(String? albumId) =>
+    albumId != null && albumId.startsWith('memory:')
+    ? int.tryParse(albumId.substring('memory:'.length))
+    : null;

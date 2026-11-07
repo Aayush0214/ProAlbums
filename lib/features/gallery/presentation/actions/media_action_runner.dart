@@ -11,6 +11,8 @@ import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_actions.dart';
 import 'package:proalbums/features/gallery/presentation/actions/media_edit_flows.dart';
 import 'package:proalbums/features/gallery/presentation/providers/share_providers.dart';
+import 'package:proalbums/features/memories/domain/memory_rules.dart';
+import 'package:proalbums/features/memories/presentation/memory_flows.dart';
 import 'package:proalbums/features/pdf/presentation/widgets/print_pictures_flow.dart';
 import 'package:proalbums/features/trash/presentation/widgets/delete_flow.dart';
 import 'package:proalbums/features/trash/presentation/widgets/trash_actions.dart';
@@ -142,8 +144,16 @@ Future<bool> runMediaAction(
       return makeCollage(context, ref, items);
 
     // A person's pictures (albumId = the person, see personAlbumId).
+    // A person's or a memory's cover (by the album id).
     case MediaAction.setAsCover:
+      if (memoryIdOfAlbum(albumId) != null) {
+        return setMemoryCover(context, ref, albumId, items.first);
+      }
       return setPersonCover(context, ref, albumId, items.first);
+
+    // A memory's pictures (albumId = memoryAlbumId).
+    case MediaAction.removeFromMemory:
+      return removeFromMemory(context, ref, albumId, items);
 
     case MediaAction.notThisPerson:
       return removeFromPerson(context, ref, albumId, items);

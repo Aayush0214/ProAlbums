@@ -124,4 +124,67 @@ void main() {
       ['group', 'day:new', 'day:old'],
     );
   });
+
+  group('the user\'s changes stay through the next run', () {
+    Future<int> one() async {
+      await store.sync(
+        [
+          draft('day:a', ['1', '2', '3']),
+        ],
+        {'1', '2', '3', '9'},
+      );
+      return (await store.memories()).single.id;
+    }
+
+    test('Gallery management: exactly the chosen are shown', () async {
+      final id = await one();
+      await store.setShown(id, {'3'});
+      await store.sync(
+        [
+          draft('day:a', ['1', '2']),
+        ],
+        {'1', '2', '3', '9'},
+      );
+      expect((await store.memories()).single.shown, ['3']);
+    });
+
+    test('"+" adds shown pictures; Remove only hides', () async {
+      final id = await one();
+      await store.add(id, [(id: '9', takenMs: 999999)]);
+      await store.hide(id, ['1']);
+      final items = await store.items(id);
+      expect(
+        [
+          for (final i in items)
+            if (i.shown) i.id,
+        ],
+        ['2', '9'],
+      );
+      expect(items.length, 4);
+    });
+
+    test('an edited memory still loses deleted pictures', () async {
+      final id = await one();
+      await store.setShown(id, {'1', '2'});
+      await store.sync(
+        [
+          draft('day:a', ['1', '2', '3']),
+        ],
+        {'2', '3'},
+      );
+      expect((await store.memories()).single.shown, ['2']);
+    });
+
+    test('Set as cover', () async {
+      final id = await one();
+      await store.setCover(id, '2');
+      await store.sync(
+        [
+          draft('day:a', ['1', '2', '3']),
+        ],
+        {'1', '2', '3'},
+      );
+      expect((await store.memories()).single.coverId, '2');
+    });
+  });
 }

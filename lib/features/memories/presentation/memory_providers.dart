@@ -11,6 +11,8 @@ import 'package:proalbums/features/classification/presentation/classification_pr
 import 'package:proalbums/features/classification/presentation/place_providers.dart';
 import 'package:proalbums/features/classification/presentation/thing_providers.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_row.dart';
+import 'package:proalbums/features/gallery/presentation/grid/gallery_rows_builder.dart';
 import 'package:proalbums/features/gallery/presentation/providers/media_providers.dart';
 import 'package:proalbums/features/memories/data/memory_repository.dart';
 import 'package:proalbums/features/memories/domain/memory_rules.dart';
@@ -282,3 +284,71 @@ List<MediaItem> featuredItems(Ref ref) => [
       height: 0,
     ),
 ];
+
+/// One saved memory (null = gone, e.g. deleted).
+@riverpod
+StoredMemory? storedMemory(Ref ref, int memoryId) {
+  for (final m
+      in ref.watch(memoryListProvider).value ?? const <StoredMemory>[]) {
+    if (m.id == memoryId) return m;
+  }
+  return null;
+}
+
+/// Every picture of a memory (candidates) with whether it is shown.
+@riverpod
+Future<List<({String id, int takenMs, bool shown})>> memoryPictures(
+  Ref ref,
+  int memoryId,
+) {
+  ref.watch(memoryScanProvider.select((s) => s.version));
+  return ref.read(memoryStoreProvider).items(memoryId);
+}
+
+MediaItem _picture(({String id, int takenMs, bool shown}) p) => MediaItem(
+  id: p.id,
+  type: MediaType.image,
+  createdAt: DateTime.fromMillisecondsSinceEpoch(p.takenMs),
+  width: 0,
+  height: 0,
+);
+
+/// View Gallery: the shown pictures, oldest first.
+@riverpod
+List<MediaItem> memoryShownItems(Ref ref, int memoryId) => [
+  for (final p
+      in ref.watch(memoryPicturesProvider(memoryId)).value ??
+          const <({String id, int takenMs, bool shown})>[])
+    if (p.shown) _picture(p),
+];
+
+/// Gallery management: every picture, oldest first.
+@riverpod
+List<MediaItem> memoryAllItems(Ref ref, int memoryId) => [
+  for (final p
+      in ref.watch(memoryPicturesProvider(memoryId)).value ??
+          const <({String id, int takenMs, bool shown})>[])
+    _picture(p),
+];
+
+/// View Gallery's grid: 2 columns, no date headers.
+const int memoryGalleryColumns = 2;
+
+/// Gallery management's grid: 4 columns, no date headers.
+const int memoryManageColumns = 4;
+
+@riverpod
+List<GalleryRow> memoryShownRows(Ref ref, int memoryId) =>
+    GalleryRowsBuilder.buildFlat(
+      items: ref.watch(memoryShownItemsProvider(memoryId)),
+      columns: memoryGalleryColumns,
+      alignToEnd: false,
+    );
+
+@riverpod
+List<GalleryRow> memoryAllRows(Ref ref, int memoryId) =>
+    GalleryRowsBuilder.buildFlat(
+      items: ref.watch(memoryAllItemsProvider(memoryId)),
+      columns: memoryManageColumns,
+      alignToEnd: false,
+    );
