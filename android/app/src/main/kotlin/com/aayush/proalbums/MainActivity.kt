@@ -16,6 +16,7 @@ class MainActivity : FlutterFragmentActivity() {
     private lateinit var videoToolsChannel: VideoToolsChannel
     private lateinit var mediaEditChannel: MediaEditChannel
     private lateinit var placeChannel: PlaceChannel
+    private lateinit var memoryChannel: MemoryChannel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +48,8 @@ class MainActivity : FlutterFragmentActivity() {
         FaceChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         LabelChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
         SearchChannel(this).register(flutterEngine.dartExecutor.binaryMessenger)
+        memoryChannel = MemoryChannel(this)
+        memoryChannel.register(flutterEngine.dartExecutor.binaryMessenger)
         placeChannel = PlaceChannel(this)
         placeChannel.register(flutterEngine.dartExecutor.binaryMessenger)
         vaultChannel = VaultChannel(this)
@@ -69,6 +72,9 @@ class MainActivity : FlutterFragmentActivity() {
         ) return
         if (::mediaEditChannel.isInitialized &&
             mediaEditChannel.onActivityResult(requestCode, resultCode)
+        ) return
+        if (::memoryChannel.isInitialized &&
+            memoryChannel.onActivityResult(requestCode, resultCode, data)
         ) return
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)

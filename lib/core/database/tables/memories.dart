@@ -31,6 +31,15 @@ class Memories extends Table {
   /// Delete memories: kept as a mark so the rules never make it again.
   BoolColumn get deleted => boolean().withDefault(const Constant(false))();
 
+  /// The music: null = the app's choice, 'none', `track:ID` (a song
+  /// of the app), `uri:CONTENT-URI` (the user's own song, [musicName]).
+  TextColumn get music => text().nullable()();
+  TextColumn get musicName => text().nullable()();
+
+  /// Where the user's own song starts (ms; the part as long as the
+  /// video, chosen WhatsApp-like).
+  IntColumn get musicStartMs => integer().nullable()();
+
   IntColumn get updatedAt => integer()();
 }
 

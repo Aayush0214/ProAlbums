@@ -10,13 +10,12 @@ import 'package:proalbums/features/gallery/presentation/actions/media_actions.da
 import 'package:proalbums/features/gallery/presentation/grid/gallery_grid.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_grid_skeleton.dart';
 import 'package:proalbums/features/gallery/presentation/providers/media_selection.dart';
-import 'package:proalbums/features/gallery/presentation/providers/share_providers.dart';
 import 'package:proalbums/features/gallery/presentation/widgets/selection_action_bar.dart';
 import 'package:proalbums/features/memories/domain/memory_rules.dart';
+import 'package:proalbums/features/memories/presentation/memory_export.dart';
 import 'package:proalbums/features/memories/presentation/memory_flows.dart';
 import 'package:proalbums/features/memories/presentation/memory_providers.dart';
 import 'package:proalbums/shared/widgets/app_back_button.dart';
-import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 import 'package:proalbums/shared/widgets/collapsing_sliver_app_bar.dart';
 
 /// ⋮ > View Gallery: a memory's shown pictures on the SHARED grid (2
@@ -47,17 +46,12 @@ class _MemoryGalleryPageState extends ConsumerState<MemoryGalleryPage> {
     super.dispose();
   }
 
+  /// Share memories = the memory as a video (made first, then the share
+  /// sheet), like the player's Share.
   Future<void> _share() async {
-    final toast = AppToast.of(context);
-    final ids = [
-      for (final item in ref.read(memoryShownItemsProvider(widget.memoryId)))
-        item.id,
-    ];
-    final result = await ref.read(shareMediaUseCaseProvider)(ids);
-    result.match(
-      (failure) => toast.show('Could not share the selected items.'),
-      (_) {},
-    );
+    final memory = ref.read(storedMemoryProvider(widget.memoryId));
+    if (memory == null) return;
+    await shareMemoryVideo(context, ref, memory);
   }
 
   Future<void> _delete() async {

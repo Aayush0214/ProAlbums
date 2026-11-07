@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:proalbums/core/database/app_database.dart';
+import 'package:proalbums/features/memories/domain/memory_music.dart';
 import 'package:proalbums/features/memories/domain/memory_rules.dart';
 
 /// A saved memory as the pages show it.
@@ -17,6 +18,9 @@ typedef StoredMemory = ({
 
   /// Every picture (candidates), oldest first.
   int candidates,
+
+  /// What it plays (the user's choice or the app's, see musicOf).
+  MemoryMusic music,
 });
 
 /// The memories (Drift): what the rules made, plus the user's changes.
@@ -155,6 +159,14 @@ final class MemoryStore {
         coverId: shown.contains(cover) ? cover : shown.first,
         shown: shown,
         candidates: countOf[row.id] ?? 0,
+        music: musicOf(
+          kind.first,
+          MemoryMusic.parse(
+            row.music,
+            name: row.musicName,
+            startMs: row.musicStartMs,
+          ),
+        ),
       ));
     }
     out.sort(compareMemories);
@@ -291,6 +303,16 @@ final class MemoryStore {
         MemoriesCompanion(
           edited: const Value(true),
           updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+        ),
+      );
+
+  /// The music picked in the editor (null = the app's choice again).
+  Future<void> setMusic(int id, MemoryMusic? music) =>
+      (_db.update(_db.memories)..where((m) => m.id.equals(id))).write(
+        MemoriesCompanion(
+          music: Value(music?.stored),
+          musicName: Value(music is OwnMusic ? music.name : null),
+          musicStartMs: Value(music is OwnMusic ? music.startMs : null),
         ),
       );
 

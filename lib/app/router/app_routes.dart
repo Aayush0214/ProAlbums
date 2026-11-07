@@ -100,6 +100,9 @@ abstract final class AppRoutes {
   /// A memory's Gallery management.
   static String memoryManage(int memoryId) => '/memory/$memoryId/manage';
 
+  /// "Choose a part" of the user's song (extra: MusicTrimRequest).
+  static const String memoryMusicTrim = '/memory-music-trim';
+
   /// For You > Featured > More.
   static const String featured = '/featured';
 

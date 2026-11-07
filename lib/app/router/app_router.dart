@@ -37,6 +37,7 @@ import 'package:proalbums/features/memories/presentation/pages/featured_page.dar
 import 'package:proalbums/features/memories/presentation/pages/memories_page.dart';
 import 'package:proalbums/features/memories/presentation/pages/memory_gallery_page.dart';
 import 'package:proalbums/features/memories/presentation/pages/memory_manage_page.dart';
+import 'package:proalbums/features/memories/presentation/pages/memory_music_trim_page.dart';
 import 'package:proalbums/features/memories/presentation/pages/memory_player_page.dart';
 import 'package:proalbums/features/pdf/presentation/pages/convert_pdf_page.dart';
 import 'package:proalbums/features/pdf/presentation/pages/pdf_adjust_image_page.dart';
@@ -387,6 +388,12 @@ GoRouter appRouter(Ref ref) {
         builder: (context, state) => MemoryGalleryPage(
           memoryId: int.tryParse(state.pathParameters['memoryId'] ?? '') ?? 0,
         ),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.memoryMusicTrim,
+        builder: (context, state) =>
+            MemoryMusicTrimPage(request: state.extra! as MusicTrimRequest),
       ),
       GoRoute(
         parentNavigatorKey: rootNavigatorKey,

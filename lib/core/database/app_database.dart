@@ -43,7 +43,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'pro_album'));
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -101,6 +101,15 @@ class AppDatabase extends _$AppDatabase {
           }
           // Version 14: picture dates from the EXIF.
           if (from < 14) await m.createTable(photoDates);
+          // Version 15: a memory's music.
+          if (from >= 13 && from < 15) {
+            await m.addColumn(memories, memories.music);
+            await m.addColumn(memories, memories.musicName);
+          }
+          // Version 16: the part of the user's song.
+          if (from >= 13 && from < 16) {
+            await m.addColumn(memories, memories.musicStartMs);
+          }
         },
       );
 }

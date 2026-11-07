@@ -144,6 +144,7 @@ flutter:
   # real launcher icon is set.
   assets:
     - assets/branding/app_icon.png
+    - assets/musics/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

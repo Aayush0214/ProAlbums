@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:proalbums/core/database/app_database.dart';
 import 'package:proalbums/features/memories/data/memory_repository.dart';
+import 'package:proalbums/features/memories/domain/memory_music.dart';
 import 'package:proalbums/features/memories/domain/memory_rules.dart';
 
 MemoryDraft draft(
@@ -222,5 +223,33 @@ void main() {
       );
       expect((await store.memories()).single.id, id);
     });
+  });
+
+  test('music: the app picks by kind until the user chooses', () async {
+    await store.sync(
+      [
+        draft('day:a', ['1', '2']),
+      ],
+      {'1', '2'},
+    );
+    final id = (await store.memories()).single.id;
+    expect(
+      (await store.memories()).single.music,
+      const BundledMusic(BundledTrack.rustyBicycle),
+    );
+    await store.setMusic(
+      id,
+      const OwnMusic('content://x/1', 'My song', startMs: 30000),
+    );
+    final own = (await store.memories()).single.music as OwnMusic;
+    expect(own.name, 'My song');
+    expect(own.startMs, 30000);
+    await store.setMusic(id, const NoMusic());
+    expect((await store.memories()).single.music, const NoMusic());
+    await store.setMusic(id, null);
+    expect(
+      (await store.memories()).single.music,
+      const BundledMusic(BundledTrack.rustyBicycle),
+    );
   });
 }

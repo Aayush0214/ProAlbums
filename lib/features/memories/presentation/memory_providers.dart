@@ -14,6 +14,7 @@ import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_row.dart';
 import 'package:proalbums/features/gallery/presentation/grid/gallery_rows_builder.dart';
 import 'package:proalbums/features/gallery/presentation/providers/media_providers.dart';
+import 'package:proalbums/features/memories/data/memory_platform.dart';
 import 'package:proalbums/features/memories/data/memory_repository.dart';
 import 'package:proalbums/features/memories/domain/memory_rules.dart';
 import 'package:proalbums/features/search/presentation/search_providers.dart';
@@ -352,3 +353,6 @@ List<GalleryRow> memoryAllRows(Ref ref, int memoryId) =>
       columns: memoryManageColumns,
       alignToEnd: false,
     );
+
+@Riverpod(keepAlive: true)
+MemoryPlatform memoryPlatform(Ref ref) => const MethodChannelMemoryPlatform();
