@@ -82,6 +82,12 @@ abstract final class AppRoutes {
   /// The People page opened from the Search tab (a person = plain grid).
   static const String searchPeople = '/search-people';
 
+  /// For You > Memories > More.
+  static const String memories = '/memories';
+
+  /// For You > Featured > More.
+  static const String featured = '/featured';
+
   /// A Search result (extra: SearchTarget).
   static const String searchResult = '/search-result';
 

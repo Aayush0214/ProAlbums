@@ -108,6 +108,18 @@ final class MemoryDraft {
   /// The ones shown (at most [MemoryRules.maxShown]), oldest first.
   final List<String> shown;
   final String coverId;
+
+  MemoryDraft withCover(String id) => MemoryDraft(
+    kind: kind,
+    key: key,
+    title: title,
+    startMs: startMs,
+    endMs: endMs,
+    ids: ids,
+    times: times,
+    shown: shown,
+    coverId: id,
+  );
 }
 
 /// A person for memories: id, name (null = "People N"), place on the People
@@ -332,10 +344,23 @@ List<MemoryDraft> buildMemories(
 
   multi.sort((a, b) => b.ids.length.compareTo(a.ids.length));
   out.sort((a, b) => b.endMs.compareTo(a.endMs));
-  return [
-    for (final m in [...multi, ...out])
-      if (m.shown.length >= MemoryRules.minShown) m,
-  ];
+  // Covers: each memory takes its best shown picture that no memory
+  // before it uses (one great close-up would else cover them all).
+  final quality = {for (final p in sorted) p.id: p.quality};
+  final usedCovers = <String>{};
+  final result = <MemoryDraft>[];
+  for (final m in [...multi, ...out]) {
+    if (m.shown.length < MemoryRules.minShown) continue;
+    final ranked = [...m.shown]
+      ..sort((a, b) => (quality[b] ?? 0).compareTo(quality[a] ?? 0));
+    final cover = ranked.firstWhere(
+      (id) => !usedCovers.contains(id),
+      orElse: () => ranked.first,
+    );
+    usedCovers.add(cover);
+    result.add(m.withCover(cover));
+  }
+  return result;
 }
 
 typedef _Trip = ({List<DateTime> days, List<MemoryPhoto> photos, String title});
@@ -483,4 +508,45 @@ List<MemoryPhoto> featuredPhotos(List<MemoryPhoto> photos) {
   final list = best.values.toList()
     ..sort((a, b) => b.takenMs.compareTo(a.takenMs));
   return list.take(MemoryRules.featuredMax).toList();
+}
+
+/// The date line of a memory, like the system gallery:
+///  - a person: years ("2021-2024");
+///  - group photos / past times: months ("December 2021-December 2024");
+///  - a month: "April 2026"; a day: "February 9, 2021";
+///  - a weekend / trip: "May 3-4, 2025", "March 30-April 2, 2026",
+///    "December 30, 2024-January 2, 2025".
+String memoryDateText(MemoryKind kind, int startMs, int endMs) {
+  final a = _local(startMs);
+  final b = _local(endMs);
+  String month(DateTime d) => '${_monthNames[d.month - 1]} ${d.year}';
+  String day(DateTime d) => '${_monthNames[d.month - 1]} ${d.day}, ${d.year}';
+  switch (kind) {
+    case MemoryKind.person:
+      return a.year == b.year ? '${a.year}' : '${a.year}-${b.year}';
+    case MemoryKind.groupPhotos:
+    case MemoryKind.pastTimes:
+      return month(a) == month(b) ? month(a) : '${month(a)}-${month(b)}';
+    case MemoryKind.month:
+      return month(a);
+    case MemoryKind.day:
+      return day(a);
+    case MemoryKind.weekend:
+    case MemoryKind.trip:
+      if (a.year == b.year && a.month == b.month && a.day == b.day) {
+        return day(a);
+      }
+      if (a.year != b.year) return '${day(a)}-${day(b)}';
+      final from = '${_monthNames[a.month - 1]} ${a.day}';
+      final to = a.month == b.month
+          ? '${b.day}'
+          : '${_monthNames[b.month - 1]} ${b.day}';
+      return '$from-$to, ${a.year}';
+  }
+}
+
+/// Featured's date line: "October 22, 2025".
+String featuredDateText(int takenMs) {
+  final d = _local(takenMs);
+  return '${_monthNames[d.month - 1]} ${d.day}, ${d.year}';
 }

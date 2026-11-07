@@ -32,6 +32,8 @@ import 'package:proalbums/features/gallery/presentation/pages/photos_page.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/slideshow_page.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/video_player_page.dart';
 import 'package:proalbums/features/gallery/presentation/viewer/viewer_page_route.dart';
+import 'package:proalbums/features/memories/presentation/pages/featured_page.dart';
+import 'package:proalbums/features/memories/presentation/pages/memories_page.dart';
 import 'package:proalbums/features/pdf/presentation/pages/convert_pdf_page.dart';
 import 'package:proalbums/features/pdf/presentation/pages/pdf_adjust_image_page.dart';
 import 'package:proalbums/features/pdf/presentation/pages/pdf_page_editor_page.dart';
@@ -360,6 +362,17 @@ GoRouter appRouter(Ref ref) {
             orElse: () => ThingKind.documents,
           ),
         ),
+      ),
+      // For You > Memories / Featured > More.
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.memories,
+        builder: (context, state) => const MemoriesPage(),
+      ),
+      GoRoute(
+        parentNavigatorKey: rootNavigatorKey,
+        path: AppRoutes.featured,
+        builder: (context, state) => const FeaturedPage(),
       ),
       // Search tab > People > More: a person opens a plain grid.
       GoRoute(

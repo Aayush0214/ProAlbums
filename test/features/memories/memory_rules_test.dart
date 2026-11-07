@@ -101,6 +101,17 @@ void main() {
     expect(keys(oneDay), ['day:2025-07-05']);
   });
 
+  test('two memories with the same best picture get different covers', () {
+    final photos = [
+      for (final y in [2022, 2023])
+        for (var d = 1; d <= 10; d++)
+          ...shots(DateTime(y, 2, d * 2), 1, people: {1}, group: true),
+    ];
+    final memories = buildMemories(photos, people: [(id: 1, name: 'A')]);
+    expect(memories.length, 2);
+    expect(memories[0].coverId, isNot(memories[1].coverId));
+  });
+
   test('one level per month: its special days, or the month alone', () {
     // A big day holds most of the month: the day stays, the month goes.
     final bigDay = buildMemories([
@@ -239,5 +250,41 @@ void main() {
       ]),
       greaterThan(photoQuality(const [(size: 0.1, sharpness: 100)])),
     );
+  });
+
+  group('date lines', () {
+    int ms(int y, int m, int d) => DateTime(y, m, d, 12).millisecondsSinceEpoch;
+
+    test('like the system gallery', () {
+      expect(
+        memoryDateText(MemoryKind.person, ms(2021, 3, 1), ms(2024, 5, 1)),
+        '2021-2024',
+      );
+      expect(
+        memoryDateText(MemoryKind.pastTimes, ms(2021, 12, 1), ms(2024, 12, 9)),
+        'December 2021-December 2024',
+      );
+      expect(
+        memoryDateText(MemoryKind.month, ms(2026, 4, 2), ms(2026, 4, 28)),
+        'April 2026',
+      );
+      expect(
+        memoryDateText(MemoryKind.day, ms(2021, 2, 9), ms(2021, 2, 9)),
+        'February 9, 2021',
+      );
+      expect(
+        memoryDateText(MemoryKind.weekend, ms(2025, 5, 3), ms(2025, 5, 4)),
+        'May 3-4, 2025',
+      );
+      expect(
+        memoryDateText(MemoryKind.trip, ms(2026, 3, 30), ms(2026, 4, 2)),
+        'March 30-April 2, 2026',
+      );
+      expect(
+        memoryDateText(MemoryKind.trip, ms(2024, 12, 30), ms(2025, 1, 2)),
+        'December 30, 2024-January 2, 2025',
+      );
+      expect(featuredDateText(ms(2025, 10, 22)), 'October 22, 2025');
+    });
   });
 }

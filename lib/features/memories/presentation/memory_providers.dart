@@ -10,6 +10,7 @@ import 'package:proalbums/features/classification/domain/thing_rules.dart';
 import 'package:proalbums/features/classification/presentation/classification_providers.dart';
 import 'package:proalbums/features/classification/presentation/place_providers.dart';
 import 'package:proalbums/features/classification/presentation/thing_providers.dart';
+import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/gallery/presentation/providers/media_providers.dart';
 import 'package:proalbums/features/memories/data/memory_repository.dart';
 import 'package:proalbums/features/memories/domain/memory_rules.dart';
@@ -268,3 +269,16 @@ class _MemoriesAutoStartState extends ConsumerState<MemoriesAutoStart> {
   @override
   Widget build(BuildContext context) => widget.child;
 }
+
+/// Featured pictures for the grid / viewer, newest first.
+@riverpod
+List<MediaItem> featuredItems(Ref ref) => [
+  for (final f in ref.watch(memoryScanProvider.select((s) => s.featured)))
+    MediaItem(
+      id: f.id,
+      type: MediaType.image,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(f.takenMs),
+      width: 0,
+      height: 0,
+    ),
+];
