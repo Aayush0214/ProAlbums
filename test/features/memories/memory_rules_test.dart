@@ -211,10 +211,11 @@ void main() {
       );
     });
 
-    test('at most 50, spread over the time, oldest first', () {
+    test('a new memory shows 15, spread over the time, oldest first', () {
       final photos = shots(DateTime(2025, 1, 1), 200);
       final shown = pickShown(photos);
-      expect(shown.length, MemoryRules.maxShown);
+      expect(shown.length, MemoryRules.defaultShown);
+      expect(pickShown(photos, max: MemoryRules.maxShown).length, 50);
       expect(shown.first, photos.first.id);
     });
 
@@ -286,5 +287,32 @@ void main() {
       );
       expect(featuredDateText(ms(2025, 10, 22)), 'October 22, 2025');
     });
+  });
+
+  test('a person memory on request: 3 different pictures are enough', () {
+    expect(personMemory(7, 'A', shots(DateTime(2024, 1, 1), 2)), isNull);
+    final m = personMemory(7, 'A', shots(DateTime(2024, 1, 1), 3))!;
+    expect(m.key, 'person:7');
+    expect(m.kind, MemoryKind.person);
+  });
+
+  test('a party a few seconds apart still makes a person memory', () {
+    final t = DateTime(2025, 3, 3, 20).millisecondsSinceEpoch;
+    final party = [
+      for (var i = 0; i < 5; i++)
+        (
+          id: 'q$i',
+          takenMs: t + i * 4000,
+          place: '',
+          people: const {7},
+          quality: 1.0,
+          biggestFace: 0.2,
+          groupPhoto: false,
+        ),
+    ];
+    // By itself the app would see one moment (no memory)…
+    expect(buildMemories(party), isEmpty);
+    // …asked for, the 5 pictures make one.
+    expect(personMemory(7, 'A', party)!.shown.length, 5);
   });
 }

@@ -69,7 +69,7 @@ class ForYouPage extends ConsumerWidget {
             ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                 child: Row(
                   children: [
                     SizedBox(
@@ -104,10 +104,10 @@ class ForYouPage extends ConsumerWidget {
               if (memories.length > 1)
                 SliverToBoxAdapter(
                   child: SizedBox(
-                    height: (width - 32 - 16) / 2.15 + 16,
+                    height: (width - 32 - 16) / 2.15 + 12,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                       itemCount: (memories.length - 1).clamp(0, _rowMemories),
                       separatorBuilder: (_, _) => const SizedBox(width: 16),
                       itemBuilder: (context, i) {
@@ -123,7 +123,7 @@ class ForYouPage extends ConsumerWidget {
             ] else if (ready)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 32, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
                   child: Text(
                     'Memories appear here as you take more photos',
                     textAlign: TextAlign.center,
@@ -213,7 +213,7 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SliverToBoxAdapter(
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 4, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 4, 4),
       child: Row(
         children: [
           Expanded(child: Text(title, style: context.textTheme.titleLarge)),
@@ -252,17 +252,18 @@ class _ToolTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: context.colorScheme.surfaceContainerHigh,
-    borderRadius: BorderRadius.circular(20),
+    borderRadius: BorderRadius.circular(16),
     child: InkWell(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(16),
       onTap: onTap,
-      child: AspectRatio(
-        aspectRatio: 1,
+      // Low (Aayush: the square tile was too tall): icon over the name.
+      child: SizedBox(
+        height: 76,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 36, color: context.colorScheme.primary),
-            const SizedBox(height: 12),
+            Icon(icon, size: 26, color: context.colorScheme.primary),
+            const SizedBox(height: 6),
             Text(label, style: context.textTheme.titleSmall),
           ],
         ),

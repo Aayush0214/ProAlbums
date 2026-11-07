@@ -90,6 +90,11 @@ abstract final class AppRoutes {
   /// A memory's pictures (View Gallery).
   static String memoryGallery(int memoryId) => '/memory/$memoryId';
 
+  static const String memoryPlayerPattern = '/memory/:memoryId/play';
+
+  /// A memory's video.
+  static String memoryPlayer(int memoryId) => '/memory/$memoryId/play';
+
   static const String memoryManagePattern = '/memory/:memoryId/manage';
 
   /// A memory's Gallery management.

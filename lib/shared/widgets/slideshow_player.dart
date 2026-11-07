@@ -52,6 +52,7 @@ class SlideshowPlayer extends StatefulWidget {
     this.startIndex = 0,
     this.options = const SlideshowOptions(),
     this.onIndex,
+    this.paused = false,
     super.key,
   });
 
@@ -60,6 +61,10 @@ class SlideshowPlayer extends StatefulWidget {
   final int startIndex;
   final SlideshowOptions options;
   final ValueChanged<int>? onIndex;
+
+  /// Stops where it is (zoom, fade and the clock); false = goes on.
+  final bool paused;
+
   final VoidCallback onFinished;
 
   @override
@@ -77,6 +82,12 @@ class _SlideshowPlayerState extends State<SlideshowPlayer> {
 
   Timer? _timer;
   bool _disposed = false;
+
+  /// The current picture's clock (fade in + time on screen) and what is
+  /// left of it; paused = the clock stops.
+  final Stopwatch _clock = Stopwatch();
+  Duration _planned = Duration.zero;
+  Completer<void>? _timeUp;
 
   @override
   void initState() {
@@ -100,8 +111,13 @@ class _SlideshowPlayerState extends State<SlideshowPlayer> {
         ? precacheImage(widget.imageAt(index + 1), context, onError: (_, _) {})
         : Future<void>.value();
     final timeUp = Completer<void>();
+    _timeUp = timeUp;
     // Its own fade in + its time on screen.
-    _timer = Timer(widget.options.fade + widget.options.slide, timeUp.complete);
+    _planned = widget.options.fade + widget.options.slide;
+    _clock
+      ..reset()
+      ..start();
+    _startTimer();
     unawaited(
       Future.wait([ready, timeUp.future]).then((_) {
         if (_disposed || !mounted) return;
@@ -119,6 +135,27 @@ class _SlideshowPlayerState extends State<SlideshowPlayer> {
     );
   }
 
+  /// (Re)starts the clock for what is left of the current picture.
+  void _startTimer() {
+    _timer?.cancel();
+    if (widget.paused) {
+      _clock.stop();
+      return;
+    }
+    _clock.start();
+    final left = _planned - _clock.elapsed;
+    final timeUp = _timeUp;
+    _timer = Timer(left.isNegative ? Duration.zero : left, () {
+      if (timeUp != null && !timeUp.isCompleted) timeUp.complete();
+    });
+  }
+
+  @override
+  void didUpdateWidget(SlideshowPlayer old) {
+    super.didUpdateWidget(old);
+    if (widget.paused != old.paused) _startTimer();
+  }
+
   void _gone(int index) {
     if (_disposed || !mounted) return;
     setState(() {
@@ -131,23 +168,27 @@ class _SlideshowPlayerState extends State<SlideshowPlayer> {
   Widget build(BuildContext context) {
     // Every picture keeps its key (and so its running zoom) for its whole
     // time on screen; the newest is on top.
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        for (final index in _onScreen)
-          _Slide(
-            key: ValueKey(index),
-            image: widget.imageAt(index),
-            options: widget.options,
-            leaving: _leaving.contains(index),
-            // The very first picture is already there (no fade from black).
-            fadeIn: index != widget.startIndex,
-            // In, out, in, out…: a picture arrives at the size the one
-            // before has reached, so their edges match in the cross-fade.
-            zoomIn: (index - widget.startIndex).isEven,
-            onGone: () => _gone(index),
-          ),
-      ],
+    // Paused: every slide's animations stop where they are.
+    return TickerMode(
+      enabled: !widget.paused,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          for (final index in _onScreen)
+            _Slide(
+              key: ValueKey(index),
+              image: widget.imageAt(index),
+              options: widget.options,
+              leaving: _leaving.contains(index),
+              // The very first picture is already there (no fade from black).
+              fadeIn: index != widget.startIndex,
+              // In, out, in, out…: a picture arrives at the size the one
+              // before has reached, so their edges match in the cross-fade.
+              zoomIn: (index - widget.startIndex).isEven,
+              onGone: () => _gone(index),
+            ),
+        ],
+      ),
     );
   }
 }

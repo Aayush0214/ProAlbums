@@ -4,17 +4,63 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:proalbums/app/router/app_routes.dart';
+import 'package:proalbums/features/classification/data/face_repository.dart';
+import 'package:proalbums/features/classification/presentation/classification_providers.dart';
 import 'package:proalbums/features/gallery/domain/entities/media_item.dart';
 import 'package:proalbums/features/memories/data/memory_repository.dart';
 import 'package:proalbums/features/memories/domain/memory_rules.dart';
 import 'package:proalbums/features/memories/presentation/memory_providers.dart';
+import 'package:proalbums/features/search/presentation/search_providers.dart';
 import 'package:proalbums/shared/widgets/app_snack_bar.dart';
 import 'package:proalbums/shared/widgets/confirm_dialog.dart';
 import 'package:proalbums/shared/widgets/text_input_dialog.dart';
 
-/// Tap on a memory: plays its video (phase 4).
+/// Tap on a memory: plays its video.
 void openMemory(BuildContext context, StoredMemory memory) =>
-    showComingSoon(context, 'Memory video');
+    unawaited(context.push<void>(AppRoutes.memoryPlayer(memory.id)));
+
+/// The person page's ▶: that person's memory (the one the rules made, or
+/// a new one from all the person's pictures), played at once.
+Future<void> playPersonMemory(
+  BuildContext context,
+  WidgetRef ref,
+  PersonSummary person,
+) async {
+  final toast = AppToast.of(context);
+  final faces = await ref.read(faceStoreProvider).facesOf(person.id);
+  // The RIGHT dates (EXIF / file name), like the memories engine: the
+  // faces keep MediaStore's date, which for copied pictures is the copy
+  // time (all one moment).
+  final library = await ref.read(libraryMediaProvider.future);
+  final takenOf = {for (final m in library.media) m.id: m.takenMs};
+  final best = <String, StoredFace>{};
+  for (final f in faces) {
+    if (library.undated.contains(f.mediaId)) continue;
+    final known = best[f.mediaId];
+    if (known == null || f.quality > known.quality) best[f.mediaId] = f;
+  }
+  final draft = personMemory(person.id, person.name ?? 'People', [
+    for (final f in best.values)
+      (
+        id: f.mediaId,
+        takenMs: takenOf[f.mediaId] ?? f.takenMs,
+        place: '',
+        people: {person.id},
+        quality: f.quality,
+        biggestFace: 0,
+        groupPhoto: false,
+      ),
+  ]);
+  if (draft == null) {
+    toast.show('Not enough photos for a memory yet');
+    return;
+  }
+  final id = await ref.read(memoryStoreProvider).ensure(draft);
+  ref.read(memoryScanProvider.notifier).changed();
+  if (context.mounted) {
+    unawaited(context.push<void>(AppRoutes.memoryPlayer(id)));
+  }
+}
 
 /// ⋮ > View Gallery: the memory's shown pictures.
 void viewMemoryGallery(BuildContext context, StoredMemory memory) =>

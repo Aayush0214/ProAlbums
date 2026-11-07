@@ -161,6 +161,49 @@ final class MemoryStore {
     return out;
   }
 
+  /// The memory of [draft]'s key, made from [draft] if there is none (or
+  /// it was deleted): the person page's ▶. Made this way it is EDITED (the
+  /// rules keep it). Returns its id.
+  Future<int> ensure(MemoryDraft draft) => _db.transaction(() async {
+    final row = await (_db.select(
+      _db.memories,
+    )..where((m) => m.key.equals(draft.key))).getSingleOrNull();
+    if (row != null && !row.deleted) return row.id;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final int id;
+    if (row != null) {
+      id = row.id;
+      await (_db.update(_db.memories)..where((m) => m.id.equals(id))).write(
+        MemoriesCompanion(
+          deleted: const Value(false),
+          edited: const Value(true),
+          title: Value(draft.title),
+          startMs: Value(draft.startMs),
+          endMs: Value(draft.endMs),
+          autoCoverId: Value(draft.coverId),
+          updatedAt: Value(now),
+        ),
+      );
+    } else {
+      id = await _db
+          .into(_db.memories)
+          .insert(
+            MemoriesCompanion.insert(
+              key: draft.key,
+              kind: draft.kind.name,
+              title: draft.title,
+              startMs: draft.startMs,
+              endMs: draft.endMs,
+              autoCoverId: draft.coverId,
+              edited: const Value(true),
+              updatedAt: now,
+            ),
+          );
+    }
+    await _replaceItems(id, draft);
+    return id;
+  });
+
   /// Delete memories (the pictures stay).
   Future<void> delete(Iterable<int> ids) async {
     final list = ids.toList();

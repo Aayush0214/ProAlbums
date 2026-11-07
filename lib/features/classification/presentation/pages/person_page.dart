@@ -31,9 +31,18 @@ import 'package:proalbums/shared/widgets/slideshow_player.dart';
 /// SHARED grid and viewer, with the person's actions (Set as cover, Not
 /// this person). (The ▶ memory video comes with the For You page.)
 class PersonPage extends ConsumerStatefulWidget {
-  const PersonPage({required this.personId, super.key});
+  const PersonPage({required this.personId, this.onPlayMemory, super.key});
 
   final int personId;
+
+  /// ▶ on the slideshow: plays this person's memory (For You). Given by the
+  /// app (classification does not know memories); null = no ▶.
+  final void Function(
+    BuildContext context,
+    WidgetRef ref,
+    PersonSummary person,
+  )?
+  onPlayMemory;
 
   @override
   ConsumerState<PersonPage> createState() => _PersonPageState();
@@ -110,6 +119,10 @@ class _PersonPageState extends ConsumerState<PersonPage> {
             height: MediaQuery.sizeOf(context).height * 0.42,
             onSelect: shown.isEmpty ? null : selection.start,
             onAddName: () => addPersonName(context, ref, person),
+            onPlay: switch (widget.onPlayMemory) {
+              final play? => () => play(context, ref, person),
+              null => null,
+            },
           ),
         ),
         _SimilarBanner(person: person),
@@ -188,6 +201,7 @@ class _PersonHeader extends SliverPersistentHeaderDelegate {
     required this.height,
     required this.onSelect,
     required this.onAddName,
+    this.onPlay,
   });
 
   final PersonSummary person;
@@ -196,6 +210,9 @@ class _PersonHeader extends SliverPersistentHeaderDelegate {
   final double height;
   final VoidCallback? onSelect;
   final VoidCallback onAddName;
+
+  /// ▶ (the person's memory); null = not shown.
+  final VoidCallback? onPlay;
 
   @override
   double get minExtent => topPadding + kToolbarHeight;
@@ -245,6 +262,27 @@ class _PersonHeader extends SliverPersistentHeaderDelegate {
                 bottom: 20,
                 child: _NameChip(name: person.name, onTap: onAddName),
               ),
+              if (onPlay case final play?)
+                Positioned(
+                  right: 16,
+                  bottom: 14,
+                  child: Material(
+                    color: AppColors.mediaBadgeFill,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: play,
+                      child: const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Icon(
+                          LucideIcons.play,
+                          size: 24,
+                          color: AppColors.mediaBadgeText,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -294,7 +332,8 @@ class _PersonHeader extends SliverPersistentHeaderDelegate {
       old.featured != featured ||
       old.topPadding != topPadding ||
       old.height != height ||
-      old.onSelect != onSelect;
+      old.onSelect != onSelect ||
+      (old.onPlay == null) != (onPlay == null);
 }
 
 /// The featured pictures, one after another for ever (the shared slideshow

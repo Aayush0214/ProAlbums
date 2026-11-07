@@ -33,13 +33,21 @@ abstract final class MemoryRules {
   /// "Over the years" = pictures from at least this many years.
   static const int minYears = 2;
 
-  /// Pictures shown in a memory (its video, View Gallery); the rest are
-  /// kept as candidates for Gallery management.
+  /// Pictures a new memory shows (its video, View Gallery): the best,
+  /// spread over its time (Aayush: 10–15, the rest are added by the user).
+  static const int defaultShown = 15;
+
+  /// At most this many can be shown (Gallery management, like the system
+  /// gallery's "Shown (N/50)"); every other picture stays a candidate.
   static const int maxShown = 50;
 
-  /// A memory needs at least this many different moments (14 pictures of
-  /// one burst are one moment: no memory).
-  static const int minShown = 6;
+  /// A memory the app makes by itself needs at least this many different
+  /// moments (14 pictures of one burst are one moment: no memory).
+  static const int minShown = 5;
+
+  /// A person's memory asked for (the person page's ▶) needs only this
+  /// many different pictures.
+  static const int minPersonShown = 3;
 
   /// Pictures taken within this many seconds are one moment (only the best
   /// is shown).
@@ -105,7 +113,7 @@ final class MemoryDraft {
   /// When each of [ids] was taken (ms).
   final List<int> times;
 
-  /// The ones shown (at most [MemoryRules.maxShown]), oldest first.
+  /// The ones shown (at first [MemoryRules.defaultShown]), oldest first.
   final List<String> shown;
   final String coverId;
 
@@ -442,10 +450,11 @@ MemoryDraft _draft(
   MemoryKind kind,
   String key,
   String title,
-  List<MemoryPhoto> photos,
-) {
+  List<MemoryPhoto> photos, {
+  int burstSeconds = MemoryRules.burstSeconds,
+}) {
   final sorted = [...photos]..sort((a, b) => a.takenMs.compareTo(b.takenMs));
-  final shown = pickShown(sorted);
+  final shown = pickShown(sorted, burstSeconds: burstSeconds);
   final shownSet = shown.toSet();
   final cover = sorted
       .where((p) => shownSet.contains(p.id))
@@ -464,17 +473,19 @@ MemoryDraft _draft(
 }
 
 /// The pictures to show (oldest first): one per moment (pictures within
-/// [MemoryRules.burstSeconds] = the best of them), then, when still too
-/// many, the best of each equal slice of time.
+/// [burstSeconds] = the best of them; 0 = only pictures of the same second),
+/// then, when still more than [max], the best of each equal slice of time.
 List<String> pickShown(
   List<MemoryPhoto> photos, {
-  int max = MemoryRules.maxShown,
+  int max = MemoryRules.defaultShown,
+  int burstSeconds = MemoryRules.burstSeconds,
 }) {
   final sorted = [...photos]..sort((a, b) => a.takenMs.compareTo(b.takenMs));
   final moments = <MemoryPhoto>[];
   for (final p in sorted) {
     if (moments.isNotEmpty &&
-        p.takenMs - moments.last.takenMs <= MemoryRules.burstSeconds * 1000) {
+        p.takenMs - moments.last.takenMs <
+            math.max(1000, burstSeconds * 1000)) {
       if (p.quality > moments.last.quality) moments.last = p;
       continue;
     }
@@ -559,3 +570,28 @@ int? memoryIdOfAlbum(String? albumId) =>
     albumId != null && albumId.startsWith('memory:')
     ? int.tryParse(albumId.substring('memory:'.length))
     : null;
+
+/// A person's memory made on request (the person page's ▶): every picture
+/// of the person; only pictures of the same second count as one (a party's
+/// pictures a few seconds apart all count). null = fewer than
+/// [MemoryRules.minPersonShown] different pictures.
+MemoryDraft? personMemory(
+  int personId,
+  String title,
+  List<MemoryPhoto> photos,
+) {
+  if (photos.isEmpty) return null;
+  final draft = _draft(
+    MemoryKind.person,
+    'person:$personId',
+    title,
+    photos,
+    burstSeconds: 0,
+  );
+  return draft.shown.length < MemoryRules.minPersonShown ? null : draft;
+}
+
+/// The memory player's pace: each picture's fade in + time on screen.
+const Duration memorySlide = Duration(milliseconds: 2400);
+const Duration memoryFade = Duration(milliseconds: 800);
+Duration get memoryPerPicture => memorySlide + memoryFade;

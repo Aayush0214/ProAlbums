@@ -187,4 +187,40 @@ void main() {
       expect((await store.memories()).single.coverId, '2');
     });
   });
+
+  group('a person page ▶ (ensure)', () {
+    test('uses the memory the rules made', () async {
+      await store.sync(
+        [
+          draft('person:7', ['1', '2'], kind: MemoryKind.person),
+        ],
+        {'1', '2'},
+      );
+      final made = (await store.memories()).single.id;
+      expect(
+        await store.ensure(draft('person:7', ['9'], kind: MemoryKind.person)),
+        made,
+      );
+    });
+
+    test('else makes one, which the rules keep', () async {
+      final id = await store.ensure(
+        draft('person:7', ['1', '2'], kind: MemoryKind.person),
+      );
+      await store.sync(const [], {'1', '2'});
+      expect((await store.memories()).single.id, id);
+    });
+
+    test('a deleted one comes back', () async {
+      final id = await store.ensure(
+        draft('person:7', ['1'], kind: MemoryKind.person),
+      );
+      await store.delete([id]);
+      expect(
+        await store.ensure(draft('person:7', ['1'], kind: MemoryKind.person)),
+        id,
+      );
+      expect((await store.memories()).single.id, id);
+    });
+  });
 }

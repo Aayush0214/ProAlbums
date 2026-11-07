@@ -91,4 +91,38 @@ void main() {
     });
     expect(find.byType(Image), findsOneWidget);
   });
+
+  testWidgets('paused: stays on the picture, then goes on', (tester) async {
+    final shown = <int>[];
+    const options = SlideshowOptions(
+      slide: Duration(milliseconds: 100),
+      fade: Duration(milliseconds: 50),
+    );
+    Widget player({required bool paused}) => MaterialApp(
+      home: SlideshowPlayer(
+        count: 3,
+        options: options,
+        paused: paused,
+        imageAt: (index) => MemoryImage(Uint8List.fromList(_pixel)),
+        onIndex: shown.add,
+        onFinished: () {},
+      ),
+    );
+
+    await tester.runAsync(() async {
+      await tester.pumpWidget(player(paused: true));
+      for (var i = 0; i < 8; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        await tester.pump(const Duration(milliseconds: 60));
+      }
+      expect(shown, [0]);
+
+      await tester.pumpWidget(player(paused: false));
+      for (var i = 0; i < 8 && shown.length < 2; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        await tester.pump(const Duration(milliseconds: 60));
+      }
+    });
+    expect(shown.take(2), [0, 1]);
+  });
 }
