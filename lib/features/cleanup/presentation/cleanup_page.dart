@@ -130,6 +130,9 @@ class CleanupEmpty extends StatelessWidget {
 }
 
 class _KindCard extends ConsumerWidget {
+  /// Pictures shown in a card.
+  static const int _previewSlots = 4;
+
   const _KindCard({required this.kind, required this.groups});
 
   final CleanupKind kind;
@@ -146,7 +149,7 @@ class _KindCard extends ConsumerWidget {
     final preview = [
       for (final group in groups)
         for (final image in group) image,
-    ].take(4).toList();
+    ].take(_previewSlots).toList();
     final load = thumbnailLoader(ref);
 
     return Material(
@@ -170,28 +173,33 @@ class _KindCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              height: 84,
-              child: Row(
-                children: [
-                  for (final image in preview)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 4),
-                      child: SizedBox(
-                        width: 84,
-                        child: Image(
-                          image: MediaThumbnailImage(
-                            id: image.id,
-                            size: 256,
-                            load: load,
-                          ),
-                          fit: BoxFit.cover,
-                          gaplessPlayback: true,
-                        ),
-                      ),
+            // 4 equal square slots across the card (fewer pictures leave
+            // empty slots, so the size never changes).
+            Row(
+              children: [
+                for (var i = 0; i < _previewSlots; i++) ...[
+                  if (i > 0) const SizedBox(width: 4),
+                  Expanded(
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: i < preview.length
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image(
+                                image: MediaThumbnailImage(
+                                  id: preview[i].id,
+                                  size: 256,
+                                  load: load,
+                                ),
+                                fit: BoxFit.cover,
+                                gaplessPlayback: true,
+                              ),
+                            )
+                          : const SizedBox.shrink(),
                     ),
+                  ),
                 ],
-              ),
+              ],
             ),
             const SizedBox(height: 4),
             Center(
